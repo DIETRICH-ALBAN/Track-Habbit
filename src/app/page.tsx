@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
 import TaskForm from "@/components/TaskForm";
+import AIChat from "@/components/AIChat";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -375,47 +376,8 @@ export default function Home() {
       </main>
 
       {/* Right Sidebar - AI Agent Preview */}
-      <aside className="w-full md:w-96 border-l border-white/10 glass-morphism flex flex-col p-6 m-4 rounded-[32px]">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="relative">
-            <div className="w-12 h-12 bg-gradient-to-tr from-primary to-blue-400 rounded-full animate-pulse blur-[2px] opacity-50 absolute inset-0" />
-            <div className="w-12 h-12 bg-gradient-to-tr from-primary to-blue-400 rounded-full relative z-10 flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-white" />
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-black rounded-full z-20" />
-          </div>
-          <div>
-            <h2 className="font-bold text-lg font-outfit">Track Habbit AI</h2>
-            <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">En ligne</p>
-          </div>
-        </div>
+      <AIChat onTaskCreated={fetchTasks} />
 
-        <div className="flex-1 bg-white/[0.03] rounded-[24px] p-5 mb-4 text-sm text-white/60 overflow-y-auto border border-white/5">
-          <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 mb-4 text-white/80 font-medium leading-relaxed">
-            Bonjour ! Je suis votre assistant. Vous pouvez me poser des questions ou m'envoyer un document pour l'analyser.
-          </div>
-          <div className="text-center text-[10px] font-bold uppercase tracking-[0.2em] my-6 opacity-30">Aujourd'hui</div>
-          <p className="italic text-center text-white/20 text-xs">En attente de votre message...</p>
-        </div>
-
-        <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10">
-          <input
-            type="text"
-            placeholder="Écrivez à l'agent..."
-            className="flex-1 bg-transparent px-4 py-3 focus:outline-none text-sm placeholder:text-white/20"
-          />
-          <button className="bg-primary p-3 rounded-xl hover:bg-blue-600 transition-all text-white shadow-lg active:scale-95">
-            <MessageSquare className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="mt-4 flex gap-2">
-          <div className="flex-1 border border-dashed border-white/20 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-white/5 cursor-pointer transition-all group">
-            <FileText className="w-5 h-5 text-white/40 group-hover:text-primary transition-colors" />
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest group-hover:text-white transition-colors">Importer PDF/Excel</span>
-          </div>
-        </div>
-      </aside>
     </div>
   );
 }
