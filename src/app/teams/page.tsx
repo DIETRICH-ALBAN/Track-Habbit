@@ -15,11 +15,45 @@ export default function TeamsPage() {
     const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
     const [teamMembers, setTeamMembers] = useState<any[]>([]);
     const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteCode, setInviteCode] = useState<string | null>(null);
     const [inviteLoading, setInviteLoading] = useState(false);
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
     const supabase = createClient();
+
+    const fetchInvite = useCallback(async (teamId: string) => {
+        const { data } = await supabase
+            .from('team_invites')
+            .select('code')
+            .eq('team_id', teamId)
+            .single();
+
+        if (data) setInviteCode(data.code);
+        else setInviteCode(null);
+    }, [supabase]);
+
+    const generateInvite = async () => {
+        if (!selectedTeam) return;
+        setInviteLoading(true);
+
+        const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+        const { error } = await supabase
+            .from('team_invites')
+            .insert([{ team_id: selectedTeam.id, code }]);
+
+        if (!error) {
+            setInviteCode(code);
+        }
+        setInviteLoading(false);
+    };
+
+    const copyInviteLink = () => {
+        const link = `${window.location.origin}/join/${inviteCode}`;
+        navigator.clipboard.writeText(link);
+        alert("Lien copié dans le presse-papier !");
+    };
 
     const fetchTeams = useCallback(async () => {
         const { data: { user } } = await supabase.auth.getUser();
@@ -59,8 +93,9 @@ export default function TeamsPage() {
     useEffect(() => {
         if (selectedTeam) {
             fetchTeamMembers(selectedTeam.id);
+            fetchInvite(selectedTeam.id);
         }
-    }, [selectedTeam, fetchTeamMembers]);
+    }, [selectedTeam, fetchTeamMembers, fetchInvite]);
 
     const handleInvite = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -172,28 +207,45 @@ export default function TeamsPage() {
                     {(isOwner || userRole === 'admin') && (
                         <section className="glass-morphism p-6 mb-8">
                             <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                <UserPlus className="w-5 h-5 text-primary" />
-                                Inviter un membre
+                                <Plus className="w-5 h-5 text-primary" />
+                                Lien d'invitation
                             </h2>
-                            <form onSubmit={handleInvite} className="flex gap-3">
-                                <input
-                                    type="email"
-                                    placeholder="Email du membre..."
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50"
-                                    value={inviteEmail}
-                                    onChange={(e) => setInviteEmail(e.target.value)}
-                                />
+
+                            {!inviteCode ? (
                                 <button
-                                    type="submit"
+                                    onClick={generateInvite}
                                     disabled={inviteLoading}
-                                    className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-50"
+                                    className="w-full flex items-center justify-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary py-4 rounded-xl font-bold border border-primary/30 transition-all disabled:opacity-50"
                                 >
-                                    {inviteLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Inviter"}
+                                    {inviteLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                                    <span>Générer un lien d'invitation unique</span>
                                 </button>
-                            </form>
-                            {inviteError && (
-                                <p className="text-yellow-500 text-sm mt-3 bg-yellow-500/10 p-3 rounded-lg">{inviteError}</p>
+                            ) : (
+                                <div className="flex flex-col md:flex-row gap-3">
+                                    <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/60 flex items-center overflow-hidden">
+                                        <span className="truncate">{window.location.origin}/join/{inviteCode}</span>
+                                    </div>
+                                    <button
+                                        onClick={copyInviteLink}
+                                        className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap"
+                                    >
+                                        Copier le lien
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm("Voulez-vous réinitialiser le lien ? L'ancien ne fonctionnera plus.")) {
+                                                supabase.from('team_invites').delete().eq('team_id', selectedTeam.id).then(() => setInviteCode(null));
+                                            }
+                                        }}
+                                        className="bg-white/5 hover:bg-red-500/10 text-white/40 hover:text-red-500 px-4 py-3 rounded-xl transition-all border border-white/10"
+                                    >
+                                        Réinitialiser
+                                    </button>
+                                </div>
                             )}
+                            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-4">
+                                Toute personne ayant ce lien pourra rejoindre l'équipe en tant que membre.
+                            </p>
                         </section>
                     )}
 
