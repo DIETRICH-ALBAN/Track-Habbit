@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical } from "lucide-react";
+import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
 import TaskForm from "@/components/TaskForm";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
+import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -15,21 +16,46 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   const supabase = createClient();
 
+  const fetchTeams = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: membershipData } = await supabase
+      .from('memberships')
+      .select('team:teams(*)')
+      .eq('user_id', user.id);
+
+    if (membershipData) {
+      const userTeams = membershipData.map((m: any) => m.team).filter(Boolean);
+      setTeams(userTeams);
+    }
+  }, [supabase]);
+
   const fetchTasks = useCallback(async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: false });
 
+    if (selectedTeamId === 'personal') {
+      query = query.is('team_id', null);
+    } else if (selectedTeamId) {
+      query = query.eq('team_id', selectedTeamId);
+    }
+
+    const { data, error } = await query;
+
     if (!error && data) {
       setTasks(data);
     }
-  }, [supabase]);
+  }, [supabase, selectedTeamId]);
 
   useEffect(() => {
     setMounted(true);
@@ -38,6 +64,7 @@ export default function Home() {
       setUser(user);
       setLoading(false);
       if (user) {
+        fetchTeams();
         fetchTasks();
       }
     };
@@ -46,12 +73,13 @@ export default function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        fetchTeams();
         fetchTasks();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchTasks, supabase.auth]);
+  }, [fetchTasks, fetchTeams, supabase.auth]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -141,6 +169,9 @@ export default function Home() {
           <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-primary border border-primary/20">
             <Calendar className="w-6 h-6 mx-auto" strokeWidth={2.5} />
           </button>
+          <a href="/teams" className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-primary">
+            <Users className="w-6 h-6 mx-auto" />
+          </a>
           <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60">
             <MessageSquare className="w-6 h-6 mx-auto" />
           </button>
@@ -176,6 +207,41 @@ export default function Home() {
               <span>Nouvelle Tâche</span>
             </button>
           </header>
+
+          {/* Team Filter Bar */}
+          <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              onClick={() => setSelectedTeamId(null)}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border whitespace-nowrap ${selectedTeamId === null
+                ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                : "bg-white/5 border-white/10 text-white/40 hover:text-white"
+                }`}
+            >
+              Tout
+            </button>
+            <button
+              onClick={() => setSelectedTeamId('personal')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border whitespace-nowrap ${selectedTeamId === 'personal'
+                ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                : "bg-white/5 border-white/10 text-white/40 hover:text-white"
+                }`}
+            >
+              Personnel
+            </button>
+            {teams.map((team) => (
+              <button
+                key={team.id}
+                onClick={() => setSelectedTeamId(team.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border whitespace-nowrap ${selectedTeamId === team.id
+                  ? "bg-primary border-primary text-white shadow-lg shadow-primary/20"
+                  : "bg-white/5 border-white/10 text-white/40 hover:text-white"
+                  }`}
+              >
+                <Users className="w-4 h-4" />
+                {team.name}
+              </button>
+            ))}
+          </div>
 
           {/* Todo Tasks */}
           <section className="space-y-4 mb-8">

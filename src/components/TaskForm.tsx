@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { X, Plus, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Plus, Loader2, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { CreateTaskInput, TaskPriority } from "@/types/task";
+import { Team } from "@/types/team";
 
 interface TaskFormProps {
     onClose: () => void;
@@ -15,10 +16,30 @@ export default function TaskForm({ onClose, onSuccess }: TaskFormProps) {
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState<TaskPriority>("medium");
     const [dueDate, setDueDate] = useState("");
+    const [teamId, setTeamId] = useState<string>("");
+    const [teams, setTeams] = useState<Team[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const supabase = createClient();
+
+    useEffect(() => {
+        const fetchTeams = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: membershipData } = await supabase
+                .from('memberships')
+                .select('team:teams(*)')
+                .eq('user_id', user.id);
+
+            if (membershipData) {
+                const userTeams = membershipData.map((m: any) => m.team).filter(Boolean);
+                setTeams(userTeams);
+            }
+        };
+        fetchTeams();
+    }, [supabase]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -31,13 +52,14 @@ export default function TaskForm({ onClose, onSuccess }: TaskFormProps) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Non authentifié");
 
-            const taskData: CreateTaskInput & { user_id: string; status: string } = {
+            const taskData: any = {
                 title: title.trim(),
                 description: description.trim() || null,
                 priority,
                 due_date: dueDate || null,
                 user_id: user.id,
-                status: 'todo'
+                status: 'todo',
+                team_id: teamId || null
             };
 
             const { error: insertError } = await supabase
@@ -97,7 +119,7 @@ export default function TaskForm({ onClose, onSuccess }: TaskFormProps) {
                         <div className="space-y-2">
                             <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Priorité</label>
                             <select
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer text-white"
                                 value={priority}
                                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
                             >
@@ -111,12 +133,33 @@ export default function TaskForm({ onClose, onSuccess }: TaskFormProps) {
                             <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Échéance</label>
                             <input
                                 type="date"
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all text-white"
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
                             />
                         </div>
                     </div>
+
+                    {teams.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Assigner à une équipe</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer text-white pl-10"
+                                    value={teamId}
+                                    onChange={(e) => setTeamId(e.target.value)}
+                                >
+                                    <option value="" className="bg-[#0a0a0a]">Personnel (Aucune équipe)</option>
+                                    {teams.map((team) => (
+                                        <option key={team.id} value={team.id} className="bg-[#0a0a0a]">
+                                            👥 {team.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Users className="w-4 h-4 text-white/30 absolute left-4 top-1/2 -translate-y-1/2" />
+                            </div>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="text-red-500 text-xs bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-center">
