@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
 import TaskForm from "@/components/TaskForm";
 import AIChat from "@/components/AIChat";
+import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -378,6 +379,8 @@ export default function Home() {
       {/* Right Sidebar - AI Agent Preview */}
       <AIChat onTaskCreated={fetchTasks} />
 
+      {/* Live Voice Assistant (Global Overlay) */}
+      <LiveVoiceAssistant onTaskCreated={fetchTasks} />
     </div>
   );
 }

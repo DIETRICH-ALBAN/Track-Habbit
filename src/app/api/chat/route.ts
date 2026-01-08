@@ -1,10 +1,8 @@
 import { createClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const SYSTEM_PROMPT = `Tu es Track Habbit AI, un assistant intelligent pour la gestion de tâches et la productivité.
 
@@ -17,12 +15,10 @@ Tu aides les utilisateurs à :
 Règles importantes :
 1. Réponds toujours en français
 2. Sois concis et utile
-3. Si l'utilisateur demande de créer une tâche, réponds avec un JSON dans ce format exact :
+3. Si l'utilisateur demande de créer une tâche, tu DOIS inclure un bloc JSON dans ta réponse dans ce format exact :
    {"action": "create_task", "title": "Titre de la tâche", "priority": "low|medium|high", "description": "Description optionnelle"}
 4. Si l'utilisateur pose une question générale, réponds normalement sans JSON
-5. Sois encourageant et positif
-
-Contexte utilisateur fourni : tu recevras la liste des tâches actuelles de l'utilisateur pour mieux l'aider.`;
+5. Sois encourageant et positif`;
 
 export async function POST(request: NextRequest) {
     try {
@@ -45,7 +41,7 @@ export async function POST(request: NextRequest) {
             .select('title, status, priority, due_date')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
-            .limit(10);
+            .limit(15);
 
         const tasksContext = tasks && tasks.length > 0
             ? `\n\nTâches actuelles de l'utilisateur:\n${tasks.map(t => `- ${t.title} (${t.status}, priorité: ${t.priority})`).join('\n')}`
@@ -57,26 +53,24 @@ export async function POST(request: NextRequest) {
             .select('role, content')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
-            .limit(6);
+            .limit(10);
 
-        const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-            { role: 'system', content: SYSTEM_PROMPT + tasksContext },
-            ...(chatHistory?.reverse().map(h => ({
-                role: h.role as 'user' | 'assistant',
-                content: h.content
-            })) || []),
-            { role: 'user', content: message }
-        ];
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        // Appel à OpenAI
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages,
-            max_tokens: 500,
-            temperature: 0.7,
+        const chat = model.startChat({
+            history: chatHistory?.reverse().map(h => ({
+                role: h.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: h.content }],
+            })) || [],
+            generationConfig: {
+                maxOutputTokens: 1000,
+            },
         });
 
-        const assistantMessage = completion.choices[0]?.message?.content || "Désolé, je n'ai pas pu générer de réponse.";
+        const fullPrompt = `${SYSTEM_PROMPT}${tasksContext}\n\nUtilisateur: ${message}`;
+        const result = await chat.sendMessage(fullPrompt);
+        const response = await result.response;
+        const assistantMessage = response.text();
 
         // Sauvegarder les messages dans l'historique
         await supabase.from('chat_history').insert([
@@ -84,12 +78,12 @@ export async function POST(request: NextRequest) {
             { user_id: user.id, role: 'assistant', content: assistantMessage }
         ]);
 
-        // Vérifier si l'IA veut créer une tâche
+        // Vérifier si l'IA veut créer une tâche (même logique d'extraction JSON)
         let taskCreated = null;
         try {
             const jsonMatch = assistantMessage.match(/\{[\s\S]*"action"\s*:\s*"create_task"[\s\S]*\}/);
             if (jsonMatch) {
-                const taskData = JSON.parse(jsonMatch[0]);
+                const taskData = JSON.parse(jsonMatch[0].trim());
                 if (taskData.action === 'create_task' && taskData.title) {
                     const { data: newTask, error: taskError } = await supabase
                         .from('tasks')
@@ -109,7 +103,7 @@ export async function POST(request: NextRequest) {
                 }
             }
         } catch (e) {
-            // Pas de JSON valide, c'est OK - c'était juste une réponse normale
+            console.error("Erreur parsing JSON tâche:", e);
         }
 
         return NextResponse.json({
@@ -118,7 +112,7 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('Erreur API Chat:', error);
+        console.error('Erreur API Chat Gemini:', error);
         return NextResponse.json(
             { error: error.message || 'Erreur interne du serveur' },
             { status: 500 }
