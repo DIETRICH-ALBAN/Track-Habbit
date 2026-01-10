@@ -1,253 +1,326 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Mic, MicOff, PhoneOff, Loader2, Volume2, Sparkles, Activity } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Mic, PhoneOff, Loader2, Volume2, Activity, Square, AlertCircle, Sparkles, Keyboard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface LiveVoiceAssistantProps {
     onTaskCreated?: () => void;
 }
 
+declare global {
+    interface Window {
+        webkitSpeechRecognition: any;
+        SpeechRecognition: any;
+    }
+}
+
 export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistantProps) {
     const [isActive, setIsActive] = useState(false);
-    const [status, setStatus] = useState<"idle" | "connecting" | "active" | "error">("idle");
-    const [isMuted, setIsMuted] = useState(false);
+    const [status, setStatus] = useState<"idle" | "listening" | "processing" | "speaking" | "error">("idle");
+    const [transcript, setTranscript] = useState("");
     const [volume, setVolume] = useState(0);
+    const [debugInfo, setDebugInfo] = useState("");
 
-    const wsRef = useRef<WebSocket | null>(null);
+    const recognitionRef = useRef<any>(null);
+    const lastTranscriptRef = useRef<string>("");
     const audioContextRef = useRef<AudioContext | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const processorRef = useRef<ScriptProcessorNode | null>(null);
-    const audioWorkletRef = useRef<AudioWorkletNode | null>(null);
-    const nextPlayTimeRef = useRef<number>(0);
-
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
 
     const stopSession = useCallback(() => {
         setIsActive(false);
         setStatus("idle");
-
-        if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
+        setDebugInfo("");
+        if (recognitionRef.current) {
+            try { recognitionRef.current.stop(); } catch (e) { }
         }
-
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
         }
-
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
-        }
+        window.speechSynthesis.cancel();
     }, []);
 
-    const startSession = async () => {
-        if (!apiKey) {
-            alert("Clé API Gemini manquante dans NEXT_PUBLIC_GEMINI_API_KEY");
+    const speak = (text: string) => {
+        window.speechSynthesis.cancel();
+        setDebugInfo("L'IA parle...");
+        const cleanText = text.replace(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g, '').trim();
+
+        if (!cleanText) {
+            setDebugInfo("Réponse vide");
+            restartListening();
             return;
         }
 
-        setStatus("connecting");
-        setIsActive(true);
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'fr-FR';
+        utterance.rate = 1.0;
 
+        utterance.onstart = () => setStatus("speaking");
+        utterance.onend = () => {
+            setDebugInfo("En attente...");
+            restartListening();
+        };
+        utterance.onerror = (e) => {
+            console.error("Erreur TTS:", e);
+            restartListening();
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const processText = async (text: string) => {
+        if (!text.trim()) {
+            restartListening();
+            return;
+        }
+
+        setStatus("processing");
+        setDebugInfo("Envoi à l'IA...");
         try {
-            // 1. Initialisation Audio
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
-                sampleRate: 16000,
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
             });
 
-            // 2. Capture Micro
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 16000,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
-            streamRef.current = stream;
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
 
-            // 3. WebSocket Gemini Live
-            const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.MultimodalLive?key=${apiKey}`;
-            const ws = new WebSocket(url);
-            wsRef.current = ws;
+            if (data.message) {
+                speak(data.message);
+            } else {
+                restartListening();
+            }
 
-            ws.onopen = () => {
-                setStatus("active");
-                // Config initiale
-                ws.send(JSON.stringify({
-                    setup: {
-                        model: "models/gemini-1.5-flash-8b", // Utilisation de la version 8b pour plus de rapidité live
-                        generation_config: {
-                            response_modalities: ["audio"],
-                        }
-                    }
-                }));
-
-                // Start audio streaming
-                const source = audioContextRef.current!.createMediaStreamSource(stream);
-                const processor = audioContextRef.current!.createScriptProcessor(2048, 1, 1);
-                processorRef.current = processor;
-
-                source.connect(processor);
-                processor.connect(audioContextRef.current!.destination);
-
-                processor.onaudioprocess = (e) => {
-                    if (ws.readyState === WebSocket.OPEN && !isMuted) {
-                        const inputData = e.inputBuffer.getChannelData(0);
-                        // Convertir Float32 en PCM 16bit base64
-                        const pcmData = new Int16Array(inputData.length);
-                        for (let i = 0; i < inputData.length; i++) {
-                            pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
-                        }
-
-                        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(pcmData.buffer)));
-                        ws.send(JSON.stringify({
-                            realtime_input: {
-                                media_chunks: [{
-                                    data: base64Audio,
-                                    mime_type: "audio/pcm"
-                                }]
-                            }
-                        }));
-
-                        // Visualisation volume
-                        const sum = inputData.reduce((acc, val) => acc + val * val, 0);
-                        setVolume(Math.sqrt(sum / inputData.length));
-                    }
-                };
-            };
-
-            ws.onmessage = async (event) => {
-                const response = JSON.parse(event.data);
-
-                if (response.server_content?.model_turn?.parts) {
-                    for (const part of response.server_content.model_turn.parts) {
-                        if (part.inline_data?.mime_type === "audio/pcm") {
-                            // Lecture de l'audio reçu
-                            const binaryString = atob(part.inline_data.data);
-                            const bytes = new Uint8Array(binaryString.length);
-                            for (let i = 0; i < binaryString.length; i++) {
-                                bytes[i] = binaryString.charCodeAt(i);
-                            }
-                            const pcm16 = new Int16Array(bytes.buffer);
-                            const float32 = new Float32Array(pcm16.length);
-                            for (let i = 0; i < pcm16.length; i++) {
-                                float32[i] = pcm16[i] / 0x7FFF;
-                            }
-
-                            const buffer = audioContextRef.current!.createBuffer(1, float32.length, 16000);
-                            buffer.getChannelData(0).set(float32);
-
-                            const source = audioContextRef.current!.createBufferSource();
-                            source.buffer = buffer;
-                            source.connect(audioContextRef.current!.destination);
-
-                            const startTime = Math.max(audioContextRef.current!.currentTime, nextPlayTimeRef.current);
-                            source.start(startTime);
-                            nextPlayTimeRef.current = startTime + buffer.duration;
-                        }
-                    }
-                }
-            };
-
-            ws.onerror = (e) => {
-                console.error("WS Error:", e);
-                setStatus("error");
-            };
-
-            ws.onclose = () => {
-                stopSession();
-            };
-
-        } catch (err) {
-            console.error("Session Start Error:", err);
+            if (data.actions && data.actions.length > 0 && onTaskCreated) {
+                onTaskCreated();
+            }
+        } catch (err: any) {
+            console.error("Erreur AI:", err);
+            setDebugInfo("Erreur Reseau");
             setStatus("error");
-            setIsActive(false);
+            setTimeout(restartListening, 2000);
+        }
+    };
+
+    const restartListening = () => {
+        setStatus("listening");
+        setTranscript("");
+        lastTranscriptRef.current = "";
+        setDebugInfo("Écoute...");
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.start();
+            } catch (e) {
+                // Déjà démarré
+            }
+        }
+    };
+
+    const initRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            setDebugInfo("Mode Clavier Seul");
+            return null;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onstart = () => {
+            setStatus("listening");
+            setDebugInfo("Parlez...");
+        };
+
+        recognition.onresult = (event: any) => {
+            let currentTranscript = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                currentTranscript += event.results[i][0].transcript;
+            }
+            setTranscript(currentTranscript);
+            lastTranscriptRef.current = currentTranscript;
+        };
+
+        recognition.onerror = (event: any) => {
+            if (event.error === 'no-speech') {
+                return; // Ignorer silence
+            }
+            if (event.error === 'not-allowed') {
+                setDebugInfo("Micro Bloqué");
+                // On passe en erreur mais on laisse l'interface active pour le clavier
+                return;
+            }
+            console.warn("STT:", event.error);
+        };
+
+        return recognition;
+    };
+
+    const startSession = async () => {
+        setIsActive(true);
+        setStatus("processing");
+        setDebugInfo("Démarrage...");
+
+        // Essayer d'initier l'audio, mais ne pas bloquer si échec
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+            analyserRef.current = audioContextRef.current.createAnalyser();
+            analyserRef.current.fftSize = 256;
+            source.connect(analyserRef.current);
+
+            const updateVolume = () => {
+                if (!analyserRef.current) return;
+                const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+                analyserRef.current.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
+                setVolume(average / 128);
+                animationFrameRef.current = requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
+        } catch (e) {
+            console.warn("Micro non disponible, passage en mode mixte");
+            setDebugInfo("Mode Texte Actif");
+        }
+
+        recognitionRef.current = initRecognition();
+        if (recognitionRef.current) {
+            try { recognitionRef.current.start(); } catch (e) { }
+        } else {
+            setStatus("listening");
+        }
+    };
+
+    const handleSubmit = (e?: React.MouseEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        if (status !== "listening") return;
+
+        const textToProcess = lastTranscriptRef.current.trim();
+
+        if (textToProcess) {
+            if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+            processText(textToProcess);
+        } else {
+            setDebugInfo("Rien entendu");
+        }
+    };
+
+    const handleManualSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const text = fd.get('text') as string;
+        if (text.trim()) {
+            if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+            processText(text);
+            e.currentTarget.reset();
         }
     };
 
     return (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60]">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999]">
             <AnimatePresence>
                 {!isActive ? (
                     <motion.button
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 20, opacity: 0 }}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
                         onClick={startSession}
-                        className="flex items-center gap-3 bg-primary hover:bg-blue-600 px-8 py-4 rounded-full font-bold shadow-[0_0_30px_rgba(59,130,246,0.5)] transition-all hover:scale-105 active:scale-95 group"
+                        className="flex items-center gap-3 bg-primary hover:bg-blue-600 px-8 py-5 rounded-full font-bold shadow-[0_0_40px_rgba(59,130,246,0.6)] transition-all active:scale-90"
                     >
-                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:animate-pulse">
-                            <Mic className="w-5 h-5 text-white" />
-                        </div>
-                        <span className="text-lg">Démarrer le Mode Live Vocal</span>
+                        <Mic className="w-6 h-6 text-white" />
+                        <span className="text-white text-lg">Assistant Vocal</span>
                     </motion.button>
                 ) : (
                     <motion.div
-                        initial={{ y: 50, scale: 0.9, opacity: 0 }}
-                        animate={{ y: 0, scale: 1, opacity: 1 }}
-                        className="glass-morphism-premium p-6 rounded-[40px] border-2 border-primary/30 min-w-[320px] shadow-[0_0_50px_rgba(59,130,246,0.3)] relative overflow-hidden"
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        className="glass-morphism-premium p-8 rounded-[40px] border-2 border-primary/40 min-w-[340px] shadow-[0_0_60px_rgba(0,0,0,0.5)]"
                     >
-                        {/* Background Animation */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent -z-10" />
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-shimmer" />
-
                         <div className="flex flex-col items-center gap-6">
-                            <div className="flex items-center justify-between w-full mb-2">
+                            {/* Header */}
+                            <div className="flex items-center justify-between w-full">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Gemini Live Active</span>
+                                    <div className={`w-2 h-2 rounded-full ${status === 'listening' ? 'bg-green-500 animate-ping' : 'bg-primary'}`} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/50">TRACK HABBIT AI</span>
                                 </div>
-                                <Sparkles className="w-4 h-4 text-primary animate-spin-slow" />
+                                <button onClick={stopSession} className="p-2 hover:bg-white/10 rounded-full text-white/40 hover:text-white">
+                                    <PhoneOff className="w-5 h-5" />
+                                </button>
                             </div>
 
-                            {/* Visualizer */}
-                            <div className="flex gap-1 items-end h-16 w-full justify-center">
-                                {[...Array(15)].map((_, i) => (
-                                    <motion.div
-                                        key={i}
-                                        animate={{
-                                            height: status === "active" ? 10 + (volume * 100 * (Math.sin(i * 0.5) + 1.5)) : 4
-                                        }}
-                                        className="w-1 bg-primary rounded-full"
-                                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                    />
-                                ))}
+                            {/* Visualizer - Mode fallback si pas de volume */}
+                            <div className="relative h-20 w-full flex items-center justify-center">
+                                <motion.div
+                                    animate={{ scale: [1, 1 + volume, 1], opacity: [0.1, 0.3, 0.1] }}
+                                    transition={{ duration: 0.3, repeat: Infinity }}
+                                    className="absolute w-28 h-28 bg-primary/30 rounded-full blur-2xl"
+                                />
+                                {status === "processing" ? (
+                                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                                ) : (
+                                    <Activity className={`w-12 h-12 ${status === 'listening' ? 'text-green-400' : 'text-primary'}`} />
+                                )}
                             </div>
 
-                            {status === "connecting" ? (
-                                <div className="flex items-center gap-2 text-white/60 font-medium">
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    <span>Connexion à l'IA...</span>
-                                </div>
-                            ) : (
-                                <div className="text-center space-y-1">
-                                    <p className="text-xl font-bold font-outfit">Je vous écoute...</p>
-                                    <p className="text-sm text-white/40">Parlez-moi naturellement</p>
-                                </div>
-                            )}
+                            {/* Zone Texte Mixte (Vocal + Clavier) */}
+                            <div className="w-full flex flex-col gap-2 relative">
+                                <p className="text-center text-white font-bold text-lg mb-1">
+                                    {status === "listening" ? "Je vous écoute..." :
+                                        status === "speaking" ? "L'IA vous répond" : "Traitement..."}
+                                </p>
 
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={() => setIsMuted(!isMuted)}
-                                    className={`p-4 rounded-2xl transition-all ${isMuted ? "bg-red-500/20 text-red-500" : "bg-white/5 text-white/60 hover:bg-white/10"}`}
+                                {status === "listening" ? (
+                                    <form onSubmit={handleManualSubmit} className="relative w-full">
+                                        <input
+                                            name="text"
+                                            autoComplete="off"
+                                            placeholder="Parlez ou écrivez ici..."
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 focus:bg-white/10 text-center transition-all"
+                                            onChange={(e) => {
+                                                setTranscript(e.target.value);
+                                                lastTranscriptRef.current = e.target.value;
+                                            }}
+                                            value={transcript} // Bindé pour afficher aussi la reco vocale
+                                        />
+                                        <Keyboard className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
+                                    </form>
+                                ) : (
+                                    <div className="bg-black/20 rounded-2xl p-4 min-h-[50px] flex items-center justify-center">
+                                        <p className="text-white/70 text-sm italic text-center">
+                                            {transcript || "..."}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* LE BOUTON DE SOUMISSION */}
+                            <div className="flex flex-col items-center gap-3 mt-2">
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={handleSubmit}
+                                    disabled={status !== "listening"}
+                                    className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all relative z-[10000] cursor-pointer ${status === "listening"
+                                            ? "bg-red-500 hover:bg-red-600 border-4 border-white/20"
+                                            : "bg-gray-700 opacity-50 cursor-not-allowed"
+                                        }`}
                                 >
-                                    {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                                </button>
+                                    {status === "listening" ? (
+                                        <Square className="w-8 h-8 text-white fill-white" />
+                                    ) : (
+                                        <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                    )}
+                                </motion.button>
 
-                                <button
-                                    onClick={stopSession}
-                                    className="p-5 bg-red-500 hover:bg-red-600 rounded-3xl transition-all shadow-lg hover:rotate-12 active:scale-95 text-white"
-                                >
-                                    <PhoneOff className="w-8 h-8" />
-                                </button>
-
-                                <button className="p-4 bg-white/5 text-white/60 rounded-2xl">
-                                    <Volume2 className="w-6 h-6" />
-                                </button>
+                                {/* DEBUG INFO */}
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-primary/70 bg-primary/10 px-3 py-1 rounded-full uppercase tracking-tighter">
+                                    <Sparkles className="w-3 h-3" />
+                                    {debugInfo || "Prêt"}
+                                </div>
                             </div>
                         </div>
                     </motion.div>

@@ -1,14 +1,21 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { MessageSquare, Send, Loader2, CheckCircle2, Sparkles, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+
+interface ActionPerformed {
+    type: 'task_created' | 'task_updated' | 'task_deleted';
+    task?: any;
+    id?: string;
+}
 
 interface Message {
     id: string;
     role: "user" | "assistant";
     content: string;
     taskCreated?: any;
+    actions?: ActionPerformed[];
 }
 
 interface AIChatProps {
@@ -78,13 +85,14 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
                 content: data.message,
-                taskCreated: data.taskCreated
+                taskCreated: data.taskCreated,
+                actions: data.actions || []
             };
 
             setMessages(prev => [...prev, assistantMessage]);
 
-            // Notifier le parent si une tâche a été créée
-            if (data.taskCreated && onTaskCreated) {
+            // Notifier le parent si une action a été effectuée
+            if (data.actions && data.actions.length > 0 && onTaskCreated) {
                 onTaskCreated();
             }
 
@@ -92,7 +100,7 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: `Erreur: ${error.message}. Vérifiez que votre clé OpenAI est configurée.`
+                content: `Désolé, j'ai rencontré une erreur : ${error.message}. Veuillez vérifier votre connexion ou vous reconnecter.`
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
@@ -100,9 +108,46 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
         }
     };
 
-    // Nettoyer le contenu pour enlever le JSON visible
+    // Nettoyer le contenu pour enlever tous les blocs JSON d'action
     const cleanContent = (content: string) => {
-        return content.replace(/\{[\s\S]*"action"\s*:\s*"create_task"[\s\S]*\}/g, '').trim();
+        return content.replace(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g, '').trim();
+    };
+
+    // Afficher les indicateurs d'action
+    const renderActionIndicators = (actions?: ActionPerformed[]) => {
+        if (!actions || actions.length === 0) return null;
+
+        return (
+            <div className="flex flex-wrap gap-2 mt-2">
+                {actions.map((action, i) => {
+                    switch (action.type) {
+                        case 'task_created':
+                            return (
+                                <div key={i} className="flex items-center gap-1 text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span>Tâche créée</span>
+                                </div>
+                            );
+                        case 'task_updated':
+                            return (
+                                <div key={i} className="flex items-center gap-1 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                                    <Pencil className="w-3 h-3" />
+                                    <span>Tâche modifiée</span>
+                                </div>
+                            );
+                        case 'task_deleted':
+                            return (
+                                <div key={i} className="flex items-center gap-1 text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Tâche supprimée</span>
+                                </div>
+                            );
+                        default:
+                            return null;
+                    }
+                })}
+            </div>
+        );
     };
 
     return (
@@ -118,7 +163,7 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
                 </div>
                 <div>
                     <h2 className="font-bold text-lg font-outfit">Track Habbit AI</h2>
-                    <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">GPT-4o • En ligne</p>
+                    <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Gemini 2.0 • En ligne</p>
                 </div>
             </div>
 
@@ -142,19 +187,14 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
                     >
                         <div
                             className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === "user"
-                                    ? "bg-primary text-white"
-                                    : "bg-white/5 text-white/80 border border-white/10"
+                                ? "bg-primary text-white"
+                                : "bg-white/5 text-white/80 border border-white/10"
                                 }`}
                         >
                             {cleanContent(msg.content)}
 
-                            {/* Afficher la tâche créée */}
-                            {msg.taskCreated && (
-                                <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-green-400">
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    <span className="text-xs font-bold">Tâche créée : {msg.taskCreated.title}</span>
-                                </div>
-                            )}
+                            {/* Afficher les actions effectuées */}
+                            {renderActionIndicators(msg.actions)}
                         </div>
                     </div>
                 ))}
