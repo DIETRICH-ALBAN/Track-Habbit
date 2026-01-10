@@ -28,6 +28,12 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const statusRef = useRef(status);
+    const isActiveRef = useRef(isActive);
+
+    // Synchronize refs with state to avoid stale closures in events
+    useEffect(() => { statusRef.current = status; }, [status]);
+    useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
 
     const stopSession = useCallback(() => {
         setIsActive(false);
@@ -139,40 +145,53 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
         recognition.onresult = (event: any) => {
             let fullTranscript = "";
-            for (let i = 0; i < event.results.length; i++) {
-                fullTranscript += event.results[i][0].transcript;
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                // On accumule pour l'affichage, mais on gère l'envoi séparément
+                if (event.results[i].isFinal) {
+                    // console.log("Final result:", event.results[i][0].transcript);
+                }
             }
 
-            if (fullTranscript.trim()) {
-                setTranscript(fullTranscript);
-                lastTranscriptRef.current = fullTranscript;
+            // Re-calcul du transcript complet pour l'UI
+            let total = "";
+            for (let i = 0; i < event.results.length; i++) {
+                total += event.results[i][0].transcript;
+            }
+
+            if (total.trim()) {
+                setTranscript(total);
+                lastTranscriptRef.current = total;
+                console.log("🎤 Transcript:", total);
 
                 // Auto-submit logic
                 if (autoSubmitTimeoutRef.current) clearTimeout(autoSubmitTimeoutRef.current);
                 autoSubmitTimeoutRef.current = setTimeout(() => {
                     const text = lastTranscriptRef.current.trim();
-                    if (text && isActive && status === "listening") {
+                    console.log("⏲️ Timeout check:", { text, isActive: isActiveRef.current, status: statusRef.current });
+                    if (text && isActiveRef.current && statusRef.current === "listening") {
+                        console.log("🚀 Auto-submitting:", text);
                         if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
                         processText(text);
                     }
-                }, 1500);
+                }, 1600);
             }
         };
 
         recognition.onerror = (event: any) => {
-            // Ignorer les erreurs "no-speech" silencieuses si on veut rester actif
-            if (event.error === 'no-speech' && isActive && status === "listening") {
+            console.error("❌ Recognition error:", event.error);
+            if (event.error === 'no-speech' && isActiveRef.current && statusRef.current === "listening") {
                 try { recognition.stop(); } catch (e) { }
                 setTimeout(() => {
-                    if (isActive && status === "listening") try { recognition.start(); } catch (e) { }
+                    if (isActiveRef.current && statusRef.current === "listening") try { recognition.start(); } catch (e) { }
                 }, 100);
             }
         };
 
         recognition.onend = () => {
-            if (isActive && status === "listening") {
+            if (isActiveRef.current && statusRef.current === "listening") {
+                console.log("🔄 Recognition ended, restarting...");
                 setTimeout(() => {
-                    if (isActive && status === "listening") try { recognition.start(); } catch (e) { }
+                    if (isActiveRef.current && statusRef.current === "listening") try { recognition.start(); } catch (e) { }
                 }, 100);
             }
         };
