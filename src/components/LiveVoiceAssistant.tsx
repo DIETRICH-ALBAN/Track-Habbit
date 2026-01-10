@@ -27,6 +27,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
+    const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const stopSession = useCallback(() => {
         setIsActive(false);
@@ -41,53 +42,66 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         window.speechSynthesis.cancel();
     }, []);
 
-    const speak = (text: string) => {
+    function restartListening() {
+        setStatus("listening");
+        setTranscript("");
+        lastTranscriptRef.current = "";
+        setDebugInfo("Je vous écoute...");
+        if (recognitionRef.current) {
+            try { recognitionRef.current.start(); } catch (e) { }
+        }
+    }
+
+    function speak(text: string) {
         window.speechSynthesis.cancel();
-        setDebugInfo("L'IA parle...");
-        const cleanText = text.replace(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g, '').trim();
+        const cleanText = text
+            .replace(/```json[\s\S]*?```/g, '') // Enlever les blocs de code JSON
+            .replace(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g, '') // Enlever les vieux JSON inline
+            .replace(/[\{\}\[\]"']/g, '')
+            .trim();
 
         if (!cleanText) {
-            setDebugInfo("Réponse vide");
             restartListening();
             return;
         }
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'fr-FR';
-        utterance.rate = 1.0;
 
-        utterance.onstart = () => setStatus("speaking");
-        utterance.onend = () => {
-            setDebugInfo("En attente...");
-            restartListening();
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('fr') && (v.name.includes('Google') || v.name.includes('Premium')));
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        utterance.rate = 1.05;
+        utterance.onstart = () => {
+            setStatus("speaking");
+            setDebugInfo("L'IA parle...");
         };
-        utterance.onerror = (e) => {
-            console.error("Erreur TTS:", e);
+        utterance.onend = () => {
+            setDebugInfo("Je vous écoute...");
             restartListening();
         };
 
         window.speechSynthesis.speak(utterance);
-    };
+    }
 
-    const processText = async (text: string) => {
+    async function processText(text: string) {
         if (!text.trim()) {
             restartListening();
             return;
         }
 
         setStatus("processing");
-        setDebugInfo("Envoi à l'IA...");
+        setDebugInfo("Analyse...");
         try {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: text }),
-                credentials: 'include' // S'assurer que les cookies Supabase sont envoyés
+                credentials: 'include'
             });
 
-            if (response.status === 401) {
-                throw new Error("Session expirée. Veuillez recharger la page.");
-            }
+            if (response.status === 401) throw new Error("Session expirée");
 
             const data = await response.json();
             if (data.error) throw new Error(data.error);
@@ -102,33 +116,16 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
                 onTaskCreated();
             }
         } catch (err: any) {
-            console.error("Erreur AI:", err);
-            setDebugInfo("Erreur Reseau");
+            console.error("AI Error:", err);
+            setDebugInfo("Erreur");
             setStatus("error");
             setTimeout(restartListening, 2000);
         }
-    };
+    }
 
-    const restartListening = () => {
-        setStatus("listening");
-        setTranscript("");
-        lastTranscriptRef.current = "";
-        setDebugInfo("Écoute...");
-        if (recognitionRef.current) {
-            try {
-                recognitionRef.current.start();
-            } catch (e) {
-                // Déjà démarré
-            }
-        }
-    };
-
-    const initRecognition = () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            setDebugInfo("Mode Clavier Seul");
-            return null;
-        }
+    function initRecognition() {
+        const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+        if (!SpeechRecognition) return null;
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
@@ -137,7 +134,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
         recognition.onstart = () => {
             setStatus("listening");
-            setDebugInfo("Parlez, je vous écoute...");
+            setDebugInfo("Je vous écoute...");
         };
 
         recognition.onresult = (event: any) => {
@@ -149,56 +146,45 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             if (fullTranscript.trim()) {
                 setTranscript(fullTranscript);
                 lastTranscriptRef.current = fullTranscript;
-                setDebugInfo("Je vous écoute...");
-                console.log("Assistant vocal entendu :", fullTranscript);
-            }
-        };
 
-        recognition.onspeechend = () => {
-            setDebugInfo("Traitement de votre phrase...");
+                // Auto-submit logic
+                if (autoSubmitTimeoutRef.current) clearTimeout(autoSubmitTimeoutRef.current);
+                autoSubmitTimeoutRef.current = setTimeout(() => {
+                    const text = lastTranscriptRef.current.trim();
+                    if (text && isActive && status === "listening") {
+                        if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+                        processText(text);
+                    }
+                }, 1500);
+            }
         };
 
         recognition.onerror = (event: any) => {
-            console.warn("STT Error:", event.error);
-            if (event.error === 'no-speech') {
-                setDebugInfo("Parlez plus fort ?");
-                return;
-            }
-            if (event.error === 'not-allowed') {
-                setDebugInfo("Micro Bloqué - Autorisez-le");
-                return;
-            }
-            if (event.error === 'network') {
-                setDebugInfo("Erreur Réseau (STT)");
-                return;
+            // Ignorer les erreurs "no-speech" silencieuses si on veut rester actif
+            if (event.error === 'no-speech' && isActive && status === "listening") {
+                try { recognition.stop(); } catch (e) { }
+                setTimeout(() => {
+                    if (isActive && status === "listening") try { recognition.start(); } catch (e) { }
+                }, 100);
             }
         };
 
-        // Relance automatique si ça coupe sans raison (fréquent sur mobile)
         recognition.onend = () => {
             if (isActive && status === "listening") {
-                // Petite pause pour éviter les boucles infinies de CPU
                 setTimeout(() => {
-                    if (isActive && status === "listening") {
-                        try { recognition.start(); } catch (e) { }
-                    }
-                }, 300);
+                    if (isActive && status === "listening") try { recognition.start(); } catch (e) { }
+                }, 100);
             }
         };
 
         return recognition;
-    };
+    }
 
-    const startSession = async () => {
+    async function startSession() {
         setIsActive(true);
         setStatus("processing");
-        setDebugInfo("Démarrage...");
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); // iOS unlock
 
-        // ASTUCE IOS: Jouer un son vide pour débloquer l'audio du navigateur
-        const unlockAudio = new SpeechSynthesisUtterance('');
-        window.speechSynthesis.speak(unlockAudio);
-
-        // Essayer d'initier l'audio, mais ne pas bloquer si échec
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -217,8 +203,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             };
             updateVolume();
         } catch (e) {
-            console.warn("Micro non disponible, passage en mode mixte");
-            setDebugInfo("Mode Texte Actif");
+            console.warn("Audio viz not available");
         }
 
         recognitionRef.current = initRecognition();
@@ -227,25 +212,22 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         } else {
             setStatus("listening");
         }
-    };
+    }
 
-    const handleSubmit = (e?: React.MouseEvent) => {
+    function handleSubmit(e?: React.MouseEvent) {
         e?.preventDefault();
-        e?.stopPropagation();
-
+        e?.stopPropagation(); // Stop propagation to prevent form submission doubling
         if (status !== "listening") return;
+        if (autoSubmitTimeoutRef.current) clearTimeout(autoSubmitTimeoutRef.current);
 
-        const textToProcess = lastTranscriptRef.current.trim();
-
-        if (textToProcess) {
+        const text = lastTranscriptRef.current.trim();
+        if (text) {
             if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
-            processText(textToProcess);
-        } else {
-            setDebugInfo("Rien entendu");
+            processText(text);
         }
-    };
+    }
 
-    const handleManualSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    function handleManualSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         const text = fd.get('text') as string;
@@ -254,7 +236,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             processText(text);
             e.currentTarget.reset();
         }
-    };
+    }
 
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999]">

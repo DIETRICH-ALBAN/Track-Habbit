@@ -6,30 +6,34 @@ const openrouter = new OpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY || ''
 });
 
-const SYSTEM_PROMPT = `Tu es Track Habbit AI, le centre de commande intelligent de l'application. 
-Tu as un accès complet pour gérer les tâches, le calendrier et les rappels de l'utilisateur.
+const SYSTEM_PROMPT = `Tu es Track Habbit AI, l'assistant personnel chaleureux et super intelligent de cette application. 
+Ton but est d'aider l'utilisateur à organiser sa vie de manière fluide et amicale.
 
-Tes capacités incluent :
-1. CRÉER des tâches ou des rappels.
-2. MODIFIER des tâches existantes (changer le statut, la priorité, la date d'échéance/calendrier).
-3. SUPPRIMER des tâches.
-4. ANALYSER l'emploi du temps et suggérer des organisations.
-5. ÉCOUTER : Tu es capable d'analyser les messages vocaux (audio) que l'utilisateur t'envoie. Quand tu reçois de l'audio, traite-le exactement comme du texte.
+### TON STYLE :
+1. **Naturel et Chaleureux** : Parle comme un assistant humain, pas un robot. Utilise des expressions comme "C'est fait !", "Je m'en occupe tout de suite", "C'est noté pour demain".
+2. **Concis** : Ne fais pas de longs discours. Va droit au but.
+3. **Proactif** : Si l'utilisateur a beaucoup de tâches, suggère-lui de se concentrer sur les plus importantes (High priority).
 
-Format de réponse pour les actions :
-Si tu dois effectuer une action, inclus un bloc JSON dans ta réponse. Tu peux en inclure plusieurs si nécessaire.
+### TES ACTIONS (CRITIQUE) :
+Dès que l'utilisateur te demande de créer, modifier ou supprimer quelque chose, tu DOIS inclure un bloc de code JSON à la FIN de ta réponse.
 
-Formats JSON supportés :
-- Création : {"action": "create_task", "title": "...", "priority": "low|medium|high", "description": "...", "due_date": "YYYY-MM-DD"}
-- Modification : {"action": "update_task", "id": "UUID_DE_LA_TACHE", "updates": {"status": "todo|in_progress|done", "priority": "...", "due_date": "..."}}
-- Suppression : {"action": "delete_task", "id": "UUID_DE_LA_TACHE"}
+Exemple :
+\`\`\`json
+[
+  {"action": "create_task", "title": "Acheter du lait", "priority": "medium", "due_date": "2024-12-12"}
+]
+\`\`\`
 
-Règles :
-1. Réponds toujours en français.
-2. Sois proactif : si l'utilisateur dit "J'ai fini mon rapport", propose de passer la tâche en 'done'.
-3. Pour le calendrier, utilise le champ "due_date".
-4. Si l'utilisateur demande de voir ses tâches, elles te sont fournies dans le contexte ci-dessous.
-5. Sois concis et efficace.`;
+**Formats JSON STRICTS (dans un tableau []) :**
+- Créer : {"action": "create_task", "title": "NOM", "priority": "low|medium|high", "due_date": "YYYY-MM-DD"}
+- Modifier : {"action": "update_task", "id": "ID_VU_DANS_LE_CONTEXTE", "updates": {"status": "todo|done", "priority": "...", "due_date": "..."}}
+- Supprimer : {"action": "delete_task", "id": "ID_VU_DANS_LE_CONTEXTE"}
+
+### RÈGLES D'OR :
+1. Si l'utilisateur dit "J'ai fini X", réponds "Super ! Je marque la tâche comme terminée." puis le bloc JSON.
+2. Si tu ne trouves pas l'ID d'une tâche pour la modifier, demande humblement "Quelle tâche voulez-vous modifier ?".
+3. Réponds TOUJOURS en français.
+4. N'explique JAMAIS le JSON à l'utilisateur, contente-toi de parler naturellement.`;
 
 export async function POST(request: NextRequest) {
     try {
@@ -45,10 +49,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (!user) {
-            return NextResponse.json(
-                { error: 'Utilisateur non identifié.' },
-                { status: 401 }
-            );
+            return NextResponse.json({ error: 'Utilisateur non identifié.' }, { status: 401 });
         }
 
         const { message, audio } = await request.json();
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Message ou audio requis' }, { status: 400 });
         }
 
-        // Récupérer les tâches de l'utilisateur pour le contexte (avec ID pour modification/suppression)
+        // Récupérer les tâches de l'utilisateur
         const { data: tasks } = await supabase
             .from('tasks')
             .select('id, title, status, priority, due_date')
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
             ).join('\n')}`
             : '\n\nL\'utilisateur n\'a pas encore de tâches.';
 
-        // Récupérer l'historique de chat récent et nettoyer le JSON
+        // Récupérer l'historique
         const { data: chatHistory } = await supabase
             .from('chat_history')
             .select('role, content')
@@ -82,22 +83,18 @@ export async function POST(request: NextRequest) {
         const cleanHistory = chatHistory?.reverse().map((h: any) => ({
             role: h.role,
             content: typeof h.content === 'string'
-                ? h.content.replace(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g, '').trim()
+                ? h.content.replace(/```json[\s\S]*?```/g, '').trim() // Clean old JSON blocks
                 : h.content
         })) || [];
 
         const messages = [
-            {
-                role: 'system',
-                content: SYSTEM_PROMPT + tasksContext
-            },
+            { role: 'system', content: SYSTEM_PROMPT + tasksContext },
             ...cleanHistory,
-            // On envoie simplement le message textuel (qu'il vienne du clavier ou du STT)
             { role: 'user', content: message }
         ];
 
-        // Appel à OpenRouter via fetch direct
-        console.log('Appel OpenRouter avec le modèle:', 'google/gemini-2.0-flash-001', audio ? `(audio size: ${audio.length})` : '(texte seul)');
+        // Appel à OpenRouter
+        console.log('Appel OpenRouter avec le modèle:', 'google/gemini-2.0-flash-001');
 
         const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
@@ -124,77 +121,72 @@ export async function POST(request: NextRequest) {
         const assistantMessage = data.choices?.[0]?.message?.content || "Désolé, je n'ai pas pu générer de réponse.";
         const assistantMessageStr = typeof assistantMessage === 'string' ? assistantMessage : JSON.stringify(assistantMessage);
 
-        // Sauvegarder les messages dans l'historique
+        // Sauvegarder dans l'historique
         await supabase.from('chat_history').insert([
             { user_id: user.id, role: 'user', content: message || (audio ? "[Audio Message]" : "") },
             { user_id: user.id, role: 'assistant', content: assistantMessageStr }
         ]);
 
-        // Traiter toutes les actions demandées par l'IA
+        // Traiter les actions via extraction du bloc JSON
         const actionsPerformed: any[] = [];
         try {
-            // Trouver tous les blocs JSON d'action dans la réponse
-            const jsonMatches = assistantMessageStr.match(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g);
+            const jsonBlockMatch = assistantMessageStr.match(/```json([\s\S]*?)```/);
+            if (jsonBlockMatch && jsonBlockMatch[1]) {
+                const actionsData = JSON.parse(jsonBlockMatch[1]);
+                const actionsList = Array.isArray(actionsData) ? actionsData : [actionsData];
 
-            if (jsonMatches) {
-                for (const jsonStr of jsonMatches) {
-                    try {
-                        const actionData = JSON.parse(jsonStr);
+                for (const actionData of actionsList) {
+                    switch (actionData.action) {
+                        case 'create_task':
+                            if (actionData.title) {
+                                const { data: newTask, error } = await supabase
+                                    .from('tasks')
+                                    .insert([{
+                                        user_id: user.id,
+                                        title: actionData.title,
+                                        description: actionData.description || null,
+                                        priority: actionData.priority || 'medium',
+                                        due_date: actionData.due_date || null,
+                                        status: 'todo'
+                                    }])
+                                    .select()
+                                    .single();
 
-                        switch (actionData.action) {
-                            case 'create_task':
-                                if (actionData.title) {
-                                    const { data: newTask, error } = await supabase
-                                        .from('tasks')
-                                        .insert([{
-                                            user_id: user.id,
-                                            title: actionData.title,
-                                            description: actionData.description || null,
-                                            priority: actionData.priority || 'medium',
-                                            due_date: actionData.due_date || null,
-                                            status: 'todo'
-                                        }])
-                                        .select()
-                                        .single();
-
-                                    if (!error && newTask) {
-                                        actionsPerformed.push({ type: 'task_created', task: newTask });
-                                    }
+                                if (!error && newTask) {
+                                    actionsPerformed.push({ type: 'task_created', task: newTask });
                                 }
-                                break;
+                            }
+                            break;
 
-                            case 'update_task':
-                                if (actionData.id && actionData.updates) {
-                                    const { data: updatedTask, error } = await supabase
-                                        .from('tasks')
-                                        .update(actionData.updates)
-                                        .eq('id', actionData.id)
-                                        .eq('user_id', user.id)
-                                        .select()
-                                        .single();
+                        case 'update_task':
+                            if (actionData.id && actionData.updates) {
+                                const { data: updatedTask, error } = await supabase
+                                    .from('tasks')
+                                    .update(actionData.updates)
+                                    .eq('id', actionData.id)
+                                    .eq('user_id', user.id)
+                                    .select()
+                                    .single();
 
-                                    if (!error && updatedTask) {
-                                        actionsPerformed.push({ type: 'task_updated', task: updatedTask });
-                                    }
+                                if (!error && updatedTask) {
+                                    actionsPerformed.push({ type: 'task_updated', task: updatedTask });
                                 }
-                                break;
+                            }
+                            break;
 
-                            case 'delete_task':
-                                if (actionData.id) {
-                                    const { error } = await supabase
-                                        .from('tasks')
-                                        .delete()
-                                        .eq('id', actionData.id)
-                                        .eq('user_id', user.id);
+                        case 'delete_task':
+                            if (actionData.id) {
+                                const { error } = await supabase
+                                    .from('tasks')
+                                    .delete()
+                                    .eq('id', actionData.id)
+                                    .eq('user_id', user.id);
 
-                                    if (!error) {
-                                        actionsPerformed.push({ type: 'task_deleted', id: actionData.id });
-                                    }
+                                if (!error) {
+                                    actionsPerformed.push({ type: 'task_deleted', id: actionData.id });
                                 }
-                                break;
-                        }
-                    } catch (parseError) {
-                        console.error("Erreur parsing action JSON:", parseError);
+                            }
+                            break;
                     }
                 }
             }
