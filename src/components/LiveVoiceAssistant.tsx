@@ -142,7 +142,6 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
         recognition.onresult = (event: any) => {
             let fullTranscript = "";
-            // On parcourt TOUS les résultats accumulés depuis le début de la session
             for (let i = 0; i < event.results.length; i++) {
                 fullTranscript += event.results[i][0].transcript;
             }
@@ -151,6 +150,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
                 setTranscript(fullTranscript);
                 lastTranscriptRef.current = fullTranscript;
                 setDebugInfo("Je vous écoute...");
+                console.log("Assistant vocal entendu :", fullTranscript);
             }
         };
 

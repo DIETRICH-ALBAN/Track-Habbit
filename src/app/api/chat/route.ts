@@ -33,33 +33,15 @@ Règles :
 
 export async function POST(request: NextRequest) {
     try {
+        if (!process.env.OPENROUTER_API_KEY) {
+            return NextResponse.json({ error: "Clé API manquante dans Vercel" }, { status: 500 });
+        }
+
         const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        // Log basic debug info (only server side)
-        const allCookies = (await (await import('next/headers')).cookies()).getAll();
-        console.log(`API Chat - Cookies count: ${allCookies.length}`);
-
-        // Get user session
-        let user;
-        try {
-            const { data, error: authError } = await supabase.auth.getUser();
-            if (authError) {
-                console.error('Supabase Auth Error:', authError.message);
-                if (authError.message.includes('No cookie auth credentials found')) {
-                    return NextResponse.json(
-                        { error: 'Session non détectée par le serveur. Veuillez recharger la page.' },
-                        { status: 401 }
-                    );
-                }
-                throw authError;
-            }
-            user = data.user;
-        } catch (e: any) {
-            console.error('Exception during auth.getUser():', e.message);
-            return NextResponse.json(
-                { error: 'Erreur d\'authentification: ' + e.message },
-                { status: 401 }
-            );
+        if (authError || !user) {
+            return NextResponse.json({ error: "Session non trouvée. Veuillez recharger." }, { status: 401 });
         }
 
         if (!user) {
