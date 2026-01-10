@@ -132,25 +132,39 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
         recognition.onstart = () => {
             setStatus("listening");
-            setDebugInfo("Parlez...");
+            setDebugInfo("Parlez, je vous écoute...");
         };
 
         recognition.onresult = (event: any) => {
-            let currentTranscript = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                currentTranscript += event.results[i][0].transcript;
+            let fullTranscript = "";
+            // On parcourt TOUS les résultats accumulés depuis le début de la session
+            for (let i = 0; i < event.results.length; i++) {
+                fullTranscript += event.results[i][0].transcript;
             }
-            if (currentTranscript.trim()) {
-                setTranscript(currentTranscript);
-                lastTranscriptRef.current = currentTranscript;
+
+            if (fullTranscript.trim()) {
+                setTranscript(fullTranscript);
+                lastTranscriptRef.current = fullTranscript;
+                setDebugInfo("Je vous écoute...");
             }
         };
 
+        recognition.onspeechend = () => {
+            setDebugInfo("Traitement de votre phrase...");
+        };
+
         recognition.onerror = (event: any) => {
-            console.warn("STT:", event.error);
-            if (event.error === 'no-speech') return;
+            console.warn("STT Error:", event.error);
+            if (event.error === 'no-speech') {
+                setDebugInfo("Parlez plus fort ?");
+                return;
+            }
             if (event.error === 'not-allowed') {
-                setDebugInfo("Micro Bloqué");
+                setDebugInfo("Micro Bloqué - Autorisez-le");
+                return;
+            }
+            if (event.error === 'network') {
+                setDebugInfo("Erreur Réseau (STT)");
                 return;
             }
         };
@@ -158,7 +172,12 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         // Relance automatique si ça coupe sans raison (fréquent sur mobile)
         recognition.onend = () => {
             if (isActive && status === "listening") {
-                try { recognition.start(); } catch (e) { }
+                // Petite pause pour éviter les boucles infinies de CPU
+                setTimeout(() => {
+                    if (isActive && status === "listening") {
+                        try { recognition.start(); } catch (e) { }
+                    }
+                }, 300);
             }
         };
 
