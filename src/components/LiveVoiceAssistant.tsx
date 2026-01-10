@@ -140,20 +140,26 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 currentTranscript += event.results[i][0].transcript;
             }
-            setTranscript(currentTranscript);
-            lastTranscriptRef.current = currentTranscript;
+            if (currentTranscript.trim()) {
+                setTranscript(currentTranscript);
+                lastTranscriptRef.current = currentTranscript;
+            }
         };
 
         recognition.onerror = (event: any) => {
-            if (event.error === 'no-speech') {
-                return; // Ignorer silence
-            }
+            console.warn("STT:", event.error);
+            if (event.error === 'no-speech') return;
             if (event.error === 'not-allowed') {
                 setDebugInfo("Micro Bloqué");
-                // On passe en erreur mais on laisse l'interface active pour le clavier
                 return;
             }
-            console.warn("STT:", event.error);
+        };
+
+        // Relance automatique si ça coupe sans raison (fréquent sur mobile)
+        recognition.onend = () => {
+            if (isActive && status === "listening") {
+                try { recognition.start(); } catch (e) { }
+            }
         };
 
         return recognition;
@@ -163,6 +169,10 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         setIsActive(true);
         setStatus("processing");
         setDebugInfo("Démarrage...");
+
+        // ASTUCE IOS: Jouer un son vide pour débloquer l'audio du navigateur
+        const unlockAudio = new SpeechSynthesisUtterance('');
+        window.speechSynthesis.speak(unlockAudio);
 
         // Essayer d'initier l'audio, mais ne pas bloquer si échec
         try {
@@ -305,8 +315,8 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
                                     onClick={handleSubmit}
                                     disabled={status !== "listening"}
                                     className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all relative z-[10000] cursor-pointer ${status === "listening"
-                                            ? "bg-red-500 hover:bg-red-600 border-4 border-white/20"
-                                            : "bg-gray-700 opacity-50 cursor-not-allowed"
+                                        ? "bg-red-500 hover:bg-red-600 border-4 border-white/20"
+                                        : "bg-gray-700 opacity-50 cursor-not-allowed"
                                         }`}
                                 >
                                     {status === "listening" ? (

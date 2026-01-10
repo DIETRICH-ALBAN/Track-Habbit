@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical, Users } from "lucide-react";
+import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical, Users, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
@@ -21,6 +21,7 @@ export default function Home() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showAIChat, setShowAIChat] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -153,7 +154,7 @@ export default function Home() {
   const doneTasks = tasks.filter(t => t.status === 'done');
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white font-sans overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white font-sans overflow-x-hidden pb-20 md:pb-0">
       {/* Task Form Modal */}
       {showTaskForm && (
         <TaskForm
@@ -162,53 +163,68 @@ export default function Home() {
         />
       )}
 
-      {/* Sidebar - Navigation */}
-      <aside className="w-full md:w-20 border-r border-white/10 flex md:flex-col items-center py-8 gap-8 glass-morphism z-20">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)]">
+      {/* Sidebar - Navigation (Desktop: Left, Mobile: Bottom Tab Bar) */}
+      <aside className="fixed bottom-0 left-0 right-0 md:relative md:w-20 border-t md:border-t-0 md:border-r border-white/10 flex flex-row md:flex-col items-center py-4 md:py-8 px-6 md:px-0 gap-8 bg-[#050505]/80 backdrop-blur-xl z-[60]">
+        <div className="hidden md:flex w-10 h-10 bg-primary rounded-xl items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)]">
           <CheckCircle2 className="w-6 h-6 text-white" />
         </div>
-        <nav className="flex md:flex-col gap-6 flex-1 justify-center text-center">
+        <nav className="flex flex-row md:flex-col gap-6 md:gap-8 flex-1 justify-around md:justify-center w-full">
           <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-primary border border-primary/20">
             <Calendar className="w-6 h-6 mx-auto" strokeWidth={2.5} />
           </button>
           <a href="/teams" className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-primary">
             <Users className="w-6 h-6 mx-auto" />
           </a>
-          <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60">
+          <button
+            onClick={() => setShowAIChat(!showAIChat)}
+            className={`p-3 bg-white/5 rounded-xl transition-all ${showAIChat ? 'text-primary border border-primary/20' : 'text-white/60'}`}
+          >
             <MessageSquare className="w-6 h-6 mx-auto" />
           </button>
-          <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60">
+          <button className="md:p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hidden md:block">
             <FileText className="w-6 h-6 mx-auto" />
           </button>
+          <button
+            onClick={handleLogout}
+            className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-all text-red-500/60 hover:text-red-500"
+          >
+            <LogOut className="w-6 h-6 mx-auto" />
+          </button>
         </nav>
-        <button
-          onClick={handleLogout}
-          className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-all text-red-500/60 hover:text-red-500"
-        >
-          <LogOut className="w-6 h-6 mx-auto" />
-        </button>
       </aside>
 
       {/* Main Content - Tasks List */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto relative">
+      <main className="flex-1 p-4 md:p-12 overflow-y-auto relative">
         <div className="max-w-4xl mx-auto">
-          <header className="mb-12 flex justify-between items-end">
+          <header className="mb-8 md:mb-12 flex justify-between items-start md:items-end">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold font-outfit gradient-text mb-2 tracking-tight">Bonjour !</h1>
-              <p className="text-white/40 font-medium">
+              <h1 className="text-3xl md:text-5xl font-bold font-outfit gradient-text mb-2 tracking-tight">Bonjour !</h1>
+              <p className="text-white/40 font-medium text-sm md:text-base">
                 {todoTasks.length === 0
                   ? "Vous n'avez aucune tâche en cours. 🎉"
                   : `Vous avez ${todoTasks.length} tâche${todoTasks.length > 1 ? 's' : ''} en cours.`}
               </p>
             </div>
+
+            {/* Desktop New Task Button */}
             <button
               onClick={() => setShowTaskForm(true)}
-              className="flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
+              className="hidden md:flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
             >
               <Plus className="w-5 h-5" strokeWidth={3} />
               <span>Nouvelle Tâche</span>
             </button>
           </header>
+
+          {/* Floating Action Button for Mobile */}
+          {!showAIChat && (
+            <button
+              onClick={() => setShowTaskForm(true)}
+              className="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] z-50 active:scale-90 transition-transform"
+            >
+              <Plus className="w-7 h-7" strokeWidth={3} />
+            </button>
+          )}
 
           {/* Team Filter Bar */}
           <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
@@ -376,8 +392,27 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Right Sidebar - AI Agent Preview */}
-      <AIChat onTaskCreated={fetchTasks} />
+      {/* Right Sidebar - AI Agent (Mobile: Overlay, Desktop: Sidebar) */}
+      <div className={`
+        fixed inset-0 md:relative md:inset-auto md:w-96 md:flex z-[100] md:z-10
+        ${showAIChat ? 'flex' : 'hidden md:flex'}
+      `}>
+        {/* Mobile Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setShowAIChat(false)}
+        />
+        <div className="relative w-full h-full flex flex-col p-4 md:p-0">
+          <AIChat onTaskCreated={fetchTasks} />
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setShowAIChat(false)}
+            className="md:hidden absolute top-8 right-8 p-3 bg-white/10 rounded-full text-white"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
 
       {/* Live Voice Assistant (Global Overlay) */}
       <LiveVoiceAssistant onTaskCreated={fetchTasks} />
