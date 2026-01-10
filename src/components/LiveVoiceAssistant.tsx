@@ -81,8 +81,13 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify({ message: text }),
+                credentials: 'include' // S'assurer que les cookies Supabase sont envoyés
             });
+
+            if (response.status === 401) {
+                throw new Error("Session expirée. Veuillez recharger la page.");
+            }
 
             const data = await response.json();
             if (data.error) throw new Error(data.error);

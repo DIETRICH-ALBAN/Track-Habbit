@@ -74,8 +74,19 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: userMessage.content })
+                body: JSON.stringify({ message: userMessage.content }),
+                credentials: 'include'
             });
+
+            if (response.status === 401) {
+                setLoading(false);
+                setMessages(prev => [...prev, {
+                    id: Date.now().toString(),
+                    role: "assistant",
+                    content: "Votre session a expiré. Veuillez recharger la page pour vous reconnecter."
+                }]);
+                return;
+            }
 
             const data = await response.json();
 

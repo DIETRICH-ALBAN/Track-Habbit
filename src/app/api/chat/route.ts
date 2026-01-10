@@ -35,17 +35,36 @@ export async function POST(request: NextRequest) {
     try {
         const supabase = await createClient();
 
-        // DEBUG: Check cookies and headers
-        const cookieHeader = request.headers.get('cookie');
-        console.log('API Chat Request - Cookies:', cookieHeader ? 'Present' : 'Missing');
+        // Log basic debug info (only server side)
+        const allCookies = (await (await import('next/headers')).cookies()).getAll();
+        console.log(`API Chat - Cookies count: ${allCookies.length}`);
 
         // Get user session
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
-            console.error('Erreur Auth Supabase:', authError?.message || 'Utilisateur non trouvé');
+        let user;
+        try {
+            const { data, error: authError } = await supabase.auth.getUser();
+            if (authError) {
+                console.error('Supabase Auth Error:', authError.message);
+                if (authError.message.includes('No cookie auth credentials found')) {
+                    return NextResponse.json(
+                        { error: 'Session non détectée par le serveur. Veuillez recharger la page.' },
+                        { status: 401 }
+                    );
+                }
+                throw authError;
+            }
+            user = data.user;
+        } catch (e: any) {
+            console.error('Exception during auth.getUser():', e.message);
             return NextResponse.json(
-                { error: 'Session invalide. Veuillez vous déconnecter et vous reconnecter.' },
+                { error: 'Erreur d\'authentification: ' + e.message },
+                { status: 401 }
+            );
+        }
+
+        if (!user) {
+            return NextResponse.json(
+                { error: 'Utilisateur non identifié.' },
                 { status: 401 }
             );
         }
