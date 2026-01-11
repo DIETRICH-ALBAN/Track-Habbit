@@ -28,6 +28,7 @@ Exemple :
 - Créer : {"action": "create_task", "title": "NOM", "priority": "low|medium|high", "due_date": "YYYY-MM-DD"}
 - Modifier : {"action": "update_task", "id": "ID_VU_DANS_LE_CONTEXTE", "updates": {"status": "todo|done", "priority": "...", "due_date": "..."}}
 - Supprimer : {"action": "delete_task", "id": "ID_VU_DANS_LE_CONTEXTE"}
+- Créer pour une Équipe : {"action": "create_team_task", "team_id": "ID_EQUIPE", "title": "NOM", "priority": "..."}
 
 ### RÈGLES D'OR DE LA PAROLE :
 1. **NE LIS JAMAIS LES IDs** (ex: ne dis pas "ID 12345"). Dis juste le nom de la tâche.
@@ -68,11 +69,23 @@ export async function POST(request: NextRequest) {
             .order('created_at', { ascending: false })
             .limit(20);
 
-        const tasksContext = tasks && tasks.length > 0
-            ? `\n\nTâches actuelles de l'utilisateur:\n${(tasks as any[]).map(t =>
-                `- [ID: ${t.id}] "${t.title}" (statut: ${t.status}, priorité: ${t.priority}${t.due_date ? `, échéance: ${t.due_date}` : ''})`
+        // Récupérer les équipes de l'utilisateur
+        const { data: memberships } = await supabase
+            .from('memberships')
+            .select('team_id, team:teams(id, name)')
+            .eq('user_id', user.id);
+
+        const teamsContext = memberships && memberships.length > 0
+            ? `\n\nÉquipes disponibles (Utilise ces IDs pour assigner des tâches aux équipes):\n${(memberships as any[]).map(m =>
+                `- Équipe "${m.team?.name}" (ID: ${m.team?.id})`
             ).join('\n')}`
-            : '\n\nL\'utilisateur n\'a pas encore de tâches.';
+            : '\n\nL\'utilisateur n\'est dans aucune équipe pour l\'instant.';
+
+        const tasksContext = tasks && tasks.length > 0
+            ? `\n\nTâches personnelles actuelles:\n${(tasks as any[]).map(t =>
+                `- [ID: ${t.id}] "${t.title}" (statut: ${t.status}, priorité: ${t.priority})`
+            ).join('\n')}`
+            : '\n\nPas de tâches personnelles.';
 
         // Récupérer l'historique
         const { data: chatHistory } = await supabase
@@ -88,7 +101,7 @@ export async function POST(request: NextRequest) {
         })) || [];
 
         const messages = [
-            { role: 'system', content: SYSTEM_PROMPT + tasksContext },
+            { role: 'system', content: SYSTEM_PROMPT + tasksContext + teamsContext },
             ...cleanHistory
         ];
 
@@ -202,6 +215,28 @@ export async function POST(request: NextRequest) {
 
                                 if (!error) {
                                     actionsPerformed.push({ type: 'task_deleted', id: actionData.id });
+                                }
+                            }
+                            break;
+
+                        case 'create_team_task':
+                            if (actionData.title && actionData.team_id) {
+                                const { data: newTeamTask, error } = await supabase
+                                    .from('tasks')
+                                    .insert([{
+                                        user_id: user.id, // Créateur
+                                        team_id: actionData.team_id, // Assigné à l'équipe
+                                        title: actionData.title,
+                                        description: actionData.description || null,
+                                        priority: actionData.priority || 'medium',
+                                        due_date: actionData.due_date || null,
+                                        status: 'todo'
+                                    }])
+                                    .select()
+                                    .single();
+
+                                if (!error && newTeamTask) {
+                                    actionsPerformed.push({ type: 'task_created', task: newTeamTask });
                                 }
                             }
                             break;
