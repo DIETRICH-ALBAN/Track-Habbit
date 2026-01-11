@@ -22,6 +22,8 @@ import { Team } from "@/types/team";
 import { format, isToday, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/ui/StatCard";
+import { TaskCard } from "@/components/ui/TaskCard";
 
 export default function Home() {
   const pathname = usePathname();
@@ -162,28 +164,10 @@ export default function Home() {
                 <div>
                   <div className="section-label">Statistiques Clés</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    {[
-                      { label: "Tâches Total", value: tasks.length, icon: ListChecks, color: "text-primary" },
-                      { label: "En cours", value: todoTasks.length, icon: Activity, color: "text-secondary" },
-                      { label: "Efficacité", value: `${efficiency}%`, icon: Sparkles, color: "text-accent" },
-                      { label: "Équipes", value: teams.length, icon: Users, color: "text-white" },
-                    ].map((stat, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="glass-panel p-6 rounded-3xl"
-                      >
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className={cn("p-2 rounded-xl bg-white/5", stat.color)}>
-                            <stat.icon size={20} />
-                          </div>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{stat.label}</span>
-                        </div>
-                        <div className="text-3xl font-black font-outfit lowercase italic">{stat.value}</div>
-                      </motion.div>
-                    ))}
+                    <StatCard label="Tâches Total" value={tasks.length} icon={ListChecks} color="text-primary" delay={0} />
+                    <StatCard label="En cours" value={todoTasks.length} icon={Activity} color="text-secondary" delay={0.1} />
+                    <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} color="text-accent" delay={0.2} />
+                    <StatCard label="Équipes" value={teams.length} icon={Users} color="text-white" delay={0.3} />
                   </div>
                 </div>
 
@@ -202,28 +186,13 @@ export default function Home() {
 
                     <div className="space-y-4">
                       <AnimatePresence mode="popLayout">
-                        {todoTasks.length > 0 ? todoTasks.slice(0, 4).map((task) => (
-                          <motion.div
-                            layout
+                        {todoTasks.length > 0 ? todoTasks.slice(0, 5).map((task, index) => (
+                          <TaskCard
                             key={task.id}
-                            initial={{ opacity: 0, scale: 0.98 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="glass-panel p-5 rounded-2xl flex items-center gap-6 group cursor-pointer"
+                            task={task}
+                            index={index}
                             onClick={() => toggleTaskStatus(task)}
-                          >
-                            <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0 transition-transform group-hover:scale-110">
-                              <Activity size={18} className="text-primary/60 group-hover:text-primary" />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-bold tracking-tight text-white/90 truncate">{task.title}</h3>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-white/20">
-                                {task.due_date ? format(parseISO(task.due_date), "HH:mm") : 'Aucune date'}
-                              </p>
-                            </div>
-                            <div className="w-10 h-10 rounded-full border border-white/5 flex items-center justify-center transition-colors hover:border-primary/40">
-                              <div className="w-3 h-3 rounded-full border-2 border-primary/20" />
-                            </div>
-                          </motion.div>
+                          />
                         )) : (
                           <div className="py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-3xl opacity-20">
                             <Sparkles size={40} className="mb-4" />
