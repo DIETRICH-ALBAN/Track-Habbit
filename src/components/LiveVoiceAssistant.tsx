@@ -89,7 +89,9 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         const cleanText = text
             .replace(/```json[\s\S]*?```/g, '') // Enlever les blocs de code JSON
             .replace(/\{[^{}]*"action"\s*:\s*"[^"]+?"[^{}]*\}/g, '') // Enlever les vieux JSON inline
-            .replace(/[\{\}\[\]"']/g, '')
+            .replace(/[\{\}\[\]"']/g, '') // Enlever ponctuations techniques
+            .replace(/\*/g, '') // Enlever les astérisques (gras/italique) pour pas qu'il dise "Astérisque"
+            .replace(/ID:\s*[a-zA-Z0-9-]+/g, '') // Enlever la lecture des IDs
             .trim();
 
         if (!cleanText) {
@@ -110,7 +112,9 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
             if (preferredVoice) utterance.voice = preferredVoice;
 
-            utterance.rate = 1.05;
+            utterance.rate = 1.0; // Un peu plus lent pour faire plus naturel
+            utterance.pitch = 1.0;
+
             utterance.onstart = () => {
                 setStatus("speaking");
                 setDebugInfo("L'IA parle...");
