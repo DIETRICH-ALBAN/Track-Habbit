@@ -45,8 +45,9 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
 
             onSuccess();
             onClose();
-        } catch (err: any) {
-            setError(err instanceof Error ? err.message : "Une erreur est survenue");
+        } catch (err: unknown) {
+            const error = err as Error;
+            setError(error.message || "Une erreur est survenue");
         } finally {
             setLoading(false);
         }

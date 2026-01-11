@@ -19,6 +19,7 @@ import { format, isToday, isTomorrow, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export default function Home() {
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null); // Still keeping user as any for now but could be User from supabase
   const [loading, setLoading] = useState(true);
@@ -351,6 +352,7 @@ export default function Home() {
                           <span className={`px-2 py-0.5 rounded-md ${getPriorityLabel(task.priority).color}`}>
                             {getPriorityLabel(task.priority).label}
                           </span>
+                          {/* The following line was malformed in the instruction, assuming it should be part of the conditional rendering */}
                           {task.team_id && task.user_id !== user?.id && (
                             <span className="text-[10px] text-white/20">
                               Par {task.user_id.slice(0, 5)}...

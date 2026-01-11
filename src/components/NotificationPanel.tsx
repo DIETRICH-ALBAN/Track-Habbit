@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Bell, CheckCircle2, Clock, Users, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -117,8 +117,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                         >
                             <div className="flex items-start gap-4">
                                 <div className={`p-2 rounded-xl ${n.type === 'task_created' ? 'bg-blue-500/10 text-blue-500' :
-                                        n.type === 'task_completed' ? 'bg-green-500/10 text-green-500' :
-                                            'bg-purple-500/10 text-purple-500'
+                                    n.type === 'task_completed' ? 'bg-green-500/10 text-green-500' :
+                                        'bg-purple-500/10 text-purple-500'
                                     }`}>
                                     {n.type === 'task_created' ? <Clock className="w-4 h-4" /> :
                                         n.type === 'task_completed' ? <CheckCircle2 className="w-4 h-4" /> :

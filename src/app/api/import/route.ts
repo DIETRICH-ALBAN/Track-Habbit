@@ -6,7 +6,7 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
     try {
         // Dynamic import to avoid build issues
         // @ts-ignore
-        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.js');
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
         // Disable worker for Node environment
         pdfjs.GlobalWorkerOptions.workerSrc = '';
