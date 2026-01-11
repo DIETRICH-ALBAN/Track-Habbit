@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Loader2, Users, CheckCircle, XCircle } from "lucide-react";
+import Sidebar from "@/components/Sidebar";
+import NotificationPanel from "@/components/NotificationPanel";
+import { AnimatePresence } from "framer-motion";
 
 export default function JoinTeamPage() {
     const params = useParams();
@@ -11,6 +14,7 @@ export default function JoinTeamPage() {
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
     const [teamName, setTeamName] = useState("");
     const [errorMsg, setErrorMsg] = useState("");
+    const [showNotifications, setShowNotifications] = useState(false);
 
     const supabase = createClient();
 
@@ -68,47 +72,61 @@ export default function JoinTeamPage() {
     }, [params.code, supabase, router]);
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-6">
-            <div className="w-full max-w-md glass-morphism p-8 text-center space-y-6">
-                {status === "loading" && (
-                    <>
-                        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-                        <h1 className="text-2xl font-bold">Rejointure de l'équipe...</h1>
-                    </>
+        <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white font-sans overflow-x-hidden pb-20 md:pb-0">
+            {/* Notification Panel Overlay */}
+            <AnimatePresence>
+                {showNotifications && (
+                    <NotificationPanel onClose={() => setShowNotifications(false)} />
                 )}
+            </AnimatePresence>
 
-                {status === "success" && (
-                    <>
-                        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                            <CheckCircle className="w-12 h-12 text-green-500" />
-                        </div>
-                        <h1 className="text-2xl font-bold font-outfit">Félicitations !</h1>
-                        <p className="text-white/60">Vous avez rejoint l'équipe <span className="text-white font-bold">{teamName}</span>.</p>
-                        <button
-                            onClick={() => window.location.href = "/teams"}
-                            className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg"
-                        >
-                            Accéder à mes équipes
-                        </button>
-                    </>
-                )}
+            <Sidebar
+                onToggleNotifications={() => setShowNotifications(!showNotifications)}
+                showNotifications={showNotifications}
+            />
 
-                {status === "error" && (
-                    <>
-                        <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
-                            <XCircle className="w-12 h-12 text-red-500" />
-                        </div>
-                        <h1 className="text-2xl font-bold font-outfit">Oups !</h1>
-                        <p className="text-white/60">{errorMsg}</p>
-                        <button
-                            onClick={() => window.location.href = "/"}
-                            className="w-full bg-white/5 hover:bg-white/10 py-4 rounded-xl font-bold transition-all border border-white/10"
-                        >
-                            Retour à l'accueil
-                        </button>
-                    </>
-                )}
-            </div>
+            <main className="flex-1 flex items-center justify-center p-6">
+                <div className="w-full max-w-md glass-morphism p-8 text-center space-y-6">
+                    {status === "loading" && (
+                        <>
+                            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+                            <h1 className="text-2xl font-bold font-outfit">Rejointure de l&apos;équipe...</h1>
+                        </>
+                    )}
+
+                    {status === "success" && (
+                        <>
+                            <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                                <CheckCircle className="w-12 h-12 text-green-500" />
+                            </div>
+                            <h1 className="text-2xl font-bold font-outfit">Félicitations !</h1>
+                            <p className="text-white/60">Vous avez rejoint l&apos;équipe <span className="text-white font-bold">{teamName}</span>.</p>
+                            <button
+                                onClick={() => window.location.href = "/teams"}
+                                className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg"
+                            >
+                                Accéder à mes équipes
+                            </button>
+                        </>
+                    )}
+
+                    {status === "error" && (
+                        <>
+                            <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
+                                <XCircle className="w-12 h-12 text-red-500" />
+                            </div>
+                            <h1 className="text-2xl font-bold font-outfit">Oups !</h1>
+                            <p className="text-white/60">{errorMsg}</p>
+                            <button
+                                onClick={() => window.location.href = "/"}
+                                className="w-full bg-white/5 hover:bg-white/10 py-4 rounded-xl font-bold transition-all border border-white/10"
+                            >
+                                Retour à l&apos;accueil
+                            </button>
+                        </>
+                    )}
+                </div>
+            </main>
         </div>
     );
 }

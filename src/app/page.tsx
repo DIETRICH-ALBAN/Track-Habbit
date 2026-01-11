@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical, Users, X, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
@@ -11,6 +12,7 @@ import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
 import DocumentImport from "@/components/DocumentImport";
 import CalendarView from "@/components/CalendarView";
 import NotificationPanel from "@/components/NotificationPanel";
+import Sidebar from "@/components/Sidebar";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -90,6 +92,18 @@ export default function Home() {
 
     return () => subscription.unsubscribe();
   }, [fetchTasks, fetchTeams, supabase.auth]);
+
+  useEffect(() => {
+    // Handle navigation parameters
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('chat') === 'true') {
+      setShowAIChat(true);
+      window.history.replaceState({}, '', pathname);
+    } else if (params.get('import') === 'true') {
+      setShowDocImport(true);
+      window.history.replaceState({}, '', pathname);
+    }
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -193,47 +207,15 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Navigation (Desktop: Left, Mobile: Bottom Tab Bar) */}
-      <aside className="fixed bottom-0 left-0 right-0 md:relative md:w-20 border-t md:border-t-0 md:border-r border-white/10 flex flex-row md:flex-col items-center py-4 md:py-8 px-6 md:px-0 gap-8 bg-[#050505]/80 backdrop-blur-xl z-[60]">
-        <div className="hidden md:flex w-10 h-10 bg-primary rounded-xl items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)]">
-          <CheckCircle2 className="w-6 h-6 text-white" />
-        </div>
-        <nav className="flex flex-row md:flex-col gap-6 md:gap-8 flex-1 justify-around md:justify-center w-full">
-          <button
-            onClick={() => setShowCalendar(!showCalendar)}
-            className={`p-3 rounded-xl transition-all border ${showCalendar ? 'bg-white/10 text-primary border-primary/20' : 'bg-white/5 text-white/60 border-transparent hover:text-primary'}`}
-          >
-            <Calendar className="w-6 h-6 mx-auto" strokeWidth={2.5} />
-          </button>
-          <a href="/teams" className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-primary">
-            <Users className="w-6 h-6 mx-auto" />
-          </a>
-          <button
-            onClick={() => setShowAIChat(!showAIChat)}
-            className={`p-3 bg-white/5 rounded-xl transition-all ${showAIChat ? 'text-primary border border-primary/20' : 'text-white/60'}`}
-          >
-            <MessageSquare className="w-6 h-6 mx-auto" />
-          </button>
-          <button
-            onClick={() => setShowDocImport(true)}
-            className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-primary"
-          >
-            <FileText className="w-6 h-6 mx-auto" />
-          </button>
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className={`p-3 rounded-xl transition-all border ${showNotifications ? 'bg-white/10 text-primary border-primary/20' : 'bg-white/5 text-white/60 border-transparent hover:text-primary'}`}
-          >
-            <Bell className="w-6 h-6 mx-auto" />
-          </button>
-          <button
-            onClick={handleLogout}
-            className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-all text-red-500/60 hover:text-red-500"
-          >
-            <LogOut className="w-6 h-6 mx-auto" />
-          </button>
-        </nav>
-      </aside>
+      <Sidebar
+        onToggleCalendar={() => setShowCalendar(!showCalendar)}
+        showCalendar={showCalendar}
+        onToggleAIChat={() => setShowAIChat(!showAIChat)}
+        showAIChat={showAIChat}
+        onToggleDocImport={() => setShowDocImport(true)}
+        onToggleNotifications={() => setShowNotifications(!showNotifications)}
+        showNotifications={showNotifications}
+      />
 
       {/* Main Content - Tasks List or Calendar */}
       <main className="flex-1 p-4 md:p-12 overflow-y-auto relative">
