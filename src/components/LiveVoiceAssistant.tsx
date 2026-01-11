@@ -405,23 +405,35 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     }
 
     return (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999]">
+        <div className={`fixed z-[9999] transition-all duration-500 ${!isActive ? 'bottom-24 left-6 md:bottom-8 md:left-1/2 md:-translate-x-1/2' : 'inset-0 md:inset-auto md:bottom-8 md:left-1/2 md:-translate-x-1/2 flex items-center justify-center p-4'}`}>
+            {isActive && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={stopSession}
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm md:hidden"
+                />
+            )}
             <AnimatePresence>
                 {!isActive ? (
                     <motion.button
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={startSession}
-                        className="flex items-center gap-3 bg-primary hover:bg-blue-600 px-8 py-5 rounded-full font-bold shadow-[0_0_40px_rgba(59,130,246,0.6)] transition-all active:scale-90"
+                        className="flex items-center gap-3 bg-primary hover:bg-blue-600 p-4 md:px-8 md:py-5 rounded-full font-bold shadow-[0_0_40px_rgba(59,130,246,0.6)] transition-all"
                     >
                         <Mic className="w-6 h-6 text-white" />
-                        <span className="text-white text-lg">Assistant Vocal</span>
+                        <span className="text-white text-lg hidden md:inline">Assistant Vocal</span>
                     </motion.button>
                 ) : (
                     <motion.div
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        className="glass-morphism-premium p-8 rounded-[40px] border-2 border-primary/40 min-w-[340px] shadow-[0_0_60px_rgba(0,0,0,0.5)]"
+                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                        className="glass-morphism-premium p-8 rounded-[40px] border-2 border-primary/40 w-full max-w-[360px] md:min-w-[340px] shadow-[0_0_60px_rgba(0,0,0,0.5)] z-10"
                     >
                         <div className="flex flex-col items-center gap-6">
                             {/* Header */}
