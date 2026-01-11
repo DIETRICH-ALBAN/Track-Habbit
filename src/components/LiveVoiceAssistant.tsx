@@ -61,12 +61,26 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     }, []);
 
     function restartListening() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
         setStatus("listening");
         setTranscript("");
         lastTranscriptRef.current = "";
+        audioChunksRef.current = [];
+        lastTalkingTimeRef.current = Date.now();
         setDebugInfo("Je vous écoute...");
-        if (recognitionRef.current) {
-            try { recognitionRef.current.start(); } catch (e) { }
+
+        // Sur mobile, on doit potentiellement relancer le MediaRecorder s'il s'est arrêté
+        if (isMobile) {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "inactive") {
+                console.log("Mobile: Restarting MediaRecorder...");
+                mediaRecorderRef.current.start();
+            }
+        } else {
+            // Sur PC, on relance juste la reco
+            if (recognitionRef.current) {
+                try { recognitionRef.current.start(); } catch (e) { }
+            }
         }
     }
 
