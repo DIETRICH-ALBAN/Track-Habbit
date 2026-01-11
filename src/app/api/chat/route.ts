@@ -69,17 +69,32 @@ export async function POST(request: NextRequest) {
             .order('created_at', { ascending: false })
             .limit(20);
 
-        // Récupérer les équipes de l'utilisateur
+        // Récupérer les équipes de l'utilisateur et leurs membres
         const { data: memberships } = await supabase
             .from('memberships')
-            .select('team_id, team:teams(id, name)')
+            .select('team_id, team:teams(id, name), role')
             .eq('user_id', user.id);
 
-        const teamsContext = memberships && memberships.length > 0
-            ? `\n\nÉquipes disponibles (Utilise ces IDs pour assigner des tâches aux équipes):\n${(memberships as any[]).map(m =>
-                `- Équipe "${m.team?.name}" (ID: ${m.team?.id})`
-            ).join('\n')}`
-            : '\n\nL\'utilisateur n\'est dans aucune équipe pour l\'instant.';
+        let teamsContext = "";
+        if (memberships && memberships.length > 0) {
+            teamsContext = "\n\nÉquipes disponibles :\n";
+            for (const m of memberships) {
+                // Pour chaque équipe, on pourrait récupérer les membres si on veut que l'IA connaisse les collègues
+                const { data: members } = await supabase
+                    .from('memberships')
+                    .select('user_id, role')
+                    .eq('team_id', m.team_id);
+
+                const teamData = Array.isArray(m.team) ? m.team[0] : m.team;
+                const teamName = teamData?.name || "Sans nom";
+                const teamId = teamData?.id || m.team_id;
+
+                const membersList = (members as any[])?.map(mem => `- Membre (${mem.role}) ID: ${mem.user_id}`).join(', ') || "Aucun autre membre";
+                teamsContext += `- Équipe "${teamName}" (ID: ${teamId}). Membres: ${membersList}\n`;
+            }
+        } else {
+            teamsContext = "\n\nL'utilisateur n'est dans aucune équipe.";
+        }
 
         const tasksContext = tasks && tasks.length > 0
             ? `\n\nTâches personnelles actuelles:\n${(tasks as any[]).map(t =>

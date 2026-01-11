@@ -44,7 +44,7 @@ export default function Home() {
   const fetchTasks = useCallback(async () => {
     let query = supabase
       .from('tasks')
-      .select('*')
+      .select('*, team:teams(name)')
       .order('created_at', { ascending: false });
 
     if (selectedTeamId === 'personal') {
@@ -279,7 +279,15 @@ export default function Home() {
                     <Circle className="w-7 h-7" strokeWidth={2.5} />
                   </button>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{task.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{task.title}</h3>
+                      {(task as any).team?.name && (
+                        <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {(task as any).team.name}
+                        </span>
+                      )}
+                    </div>
                     {task.description && (
                       <p className="text-sm text-white/40 mt-1 line-clamp-1">{task.description}</p>
                     )}
@@ -292,6 +300,11 @@ export default function Home() {
                       <span className={`px-2 py-0.5 rounded-md ${getPriorityLabel(task.priority).color}`}>
                         {getPriorityLabel(task.priority).label}
                       </span>
+                      {task.team_id && task.user_id !== user?.id && (
+                        <span className="text-[10px] text-white/20">
+                          Par {task.user_id.slice(0, 5)}...
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="relative">
