@@ -32,6 +32,10 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     const isActiveRef = useRef(isActive);
     const [shake, setShake] = useState(false);
 
+    // Pour l'audio natif (Fallback si STT échoue)
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
     // Synchronize refs with state to avoid stale closures in events
     useEffect(() => { statusRef.current = status; }, [status]);
     useEffect(() => { isActiveRef.current = isActive; }, [isActive]);
@@ -42,6 +46,9 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         setDebugInfo("");
         if (recognitionRef.current) {
             try { recognitionRef.current.stop(); } catch (e) { }
+        }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            try { mediaRecorderRef.current.stop(); } catch (e) { }
         }
         if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
@@ -113,19 +120,22 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         }
     }
 
-    async function processText(text: string) {
-        if (!text.trim()) {
+    async function processText(text: string, audioBase64?: string) {
+        if (!text.trim() && !audioBase64) {
             restartListening();
             return;
         }
 
         setStatus("processing");
-        setDebugInfo("Analyse...");
+        setDebugInfo(audioBase64 ? "Analyse Audio..." : "Analyse...");
         try {
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text }),
+                body: JSON.stringify({
+                    message: text,
+                    audio: audioBase64
+                }),
                 credentials: 'include'
             });
 
@@ -225,6 +235,9 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         setIsActive(true);
         setStatus("processing");
         setDebugInfo("Démarrage...");
+        setTranscript("");
+        lastTranscriptRef.current = "";
+        audioChunksRef.current = [];
 
         // Débloquer l'audio
         const unlockUtterance = new SpeechSynthesisUtterance('');
@@ -232,47 +245,60 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         window.speechSynthesis.speak(unlockUtterance);
 
         try {
-            // On lance d'abord la reco seule SANS getUserMedia pour éviter les conflits
+            // Demande le flux micro une seule fois pour tous
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // 1. Lancer MediaRecorder (Fallback Robuste)
+            const mediaRecorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = mediaRecorder;
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                // Si pas de transcript, on envoie l'audio
+                if (!lastTranscriptRef.current.trim() && isActiveRef.current) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        const base64Audio = reader.result as string;
+                        processText("", base64Audio);
+                    };
+                }
+            };
+            mediaRecorder.start();
+
+            // 2. Lancer la reconnaissance vocale browser (UI réactive)
             recognitionRef.current = initRecognition();
             if (recognitionRef.current) {
                 recognitionRef.current.start();
                 console.log("Speech recognition started.");
             } else {
-                throw new Error("SpeechRecognition not supported");
+                console.warn("STT not supported, falling back to pure recording");
             }
 
-            // Tentative de visualiseur en parallèle après un délai
-            setTimeout(async () => {
-                if (!isActiveRef.current) return;
-                try {
-                    // On ne demande le stream QUE pour la visualisation
-                    // Si ça échoue, ce n'est pas grave, la reco tournera sans la "vague"
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
-                    if (!stream) return;
+            // 3. Visualiseur
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+            analyserRef.current = audioContextRef.current.createAnalyser();
+            analyserRef.current.fftSize = 256;
+            source.connect(analyserRef.current);
 
-                    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-                    const source = audioContextRef.current.createMediaStreamSource(stream);
-                    analyserRef.current = audioContextRef.current.createAnalyser();
-                    analyserRef.current.fftSize = 256;
-                    source.connect(analyserRef.current);
-
-                    const updateVolume = () => {
-                        if (!analyserRef.current || !isActiveRef.current) return;
-                        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-                        analyserRef.current.getByteFrequencyData(dataArray);
-                        const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
-                        setVolume(average / 128);
-                        animationFrameRef.current = requestAnimationFrame(updateVolume);
-                    };
-                    updateVolume();
-                } catch (vizErr) {
-                    console.warn("Visualizer failed:", vizErr);
-                }
-            }, 1000);
+            const updateVolume = () => {
+                if (!analyserRef.current || !isActiveRef.current) return;
+                const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+                analyserRef.current.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
+                setVolume(average / 128);
+                animationFrameRef.current = requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
 
         } catch (e: any) {
             console.error("Start session failed:", e);
-            setStatus("listening");
+            setDebugInfo("Erreur Micro");
+            setStatus("error");
+            setTimeout(stopSession, 3000);
         }
     }
 
@@ -283,15 +309,27 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         if (autoSubmitTimeoutRef.current) clearTimeout(autoSubmitTimeoutRef.current);
 
         const text = lastTranscriptRef.current.trim();
+
+        // On arrête tout, les onstop/onend s'occuperont de la suite
+        if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+
         if (text) {
-            console.log("Submit text:", text);
-            if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+            // On a du texte, on l'envoie direct (on stoppe le recorder sans traiter son résultat)
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+                mediaRecorderRef.current.onstop = null; // On annule le callback audio
+                mediaRecorderRef.current.stop();
+            }
             processText(text);
         } else {
-            console.warn("Empty transcript on submit");
-            setShake(true);
-            setDebugInfo("Dites quelque chose...");
-            setTimeout(() => setShake(false), 500);
+            // Pas de texte : on laisse le onstop du MediaRecorder envoyer l'audio
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+                setDebugInfo("Envoi Audio...");
+                mediaRecorderRef.current.stop();
+            } else {
+                setShake(true);
+                setDebugInfo("Dites quelque chose...");
+                setTimeout(() => setShake(false), 500);
+            }
         }
     }
 

@@ -89,12 +89,30 @@ export async function POST(request: NextRequest) {
 
         const messages = [
             { role: 'system', content: SYSTEM_PROMPT + tasksContext },
-            ...cleanHistory,
-            { role: 'user', content: message }
+            ...cleanHistory
         ];
 
+        // Construction du message utilisateur (Texte ou Audio)
+        if (audio) {
+            // Si on a de l'audio, on l'envoie en tant que contenu multimodal pour Gemini 2.0
+            messages.push({
+                role: 'user',
+                content: [
+                    { type: 'text', text: message || "L'utilisateur a envoyé un message vocal." },
+                    {
+                        type: 'image_url', // OpenRouter utilise souvent image_url pour tout contenu binaire (à vérifier selon le modèle)
+                        image_url: {
+                            url: audio.startsWith('data:') ? audio : `data:audio/wav;base64,${audio}`
+                        }
+                    }
+                ] as any
+            });
+        } else {
+            messages.push({ role: 'user', content: message });
+        }
+
         // Appel à OpenRouter
-        console.log('Appel OpenRouter avec le modèle:', 'google/gemini-2.0-flash-001');
+        console.log('Appel OpenRouter avec le modèle:', 'google/gemini-2.0-flash-001', audio ? '(avec audio)' : '(texte)');
 
         const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
