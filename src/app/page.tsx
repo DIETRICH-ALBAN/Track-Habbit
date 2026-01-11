@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import {
   Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock,
   LogOut, Trash2, MoreVertical, Users, X, Bell, User, Cpu, Activity,
-  Filter, CheckCircle, Radio
+  Filter, CheckCircle, Radio, Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
@@ -17,6 +17,7 @@ import DocumentImport from "@/components/DocumentImport";
 import CalendarView from "@/components/CalendarView";
 import NotificationPanel from "@/components/NotificationPanel";
 import Sidebar from "@/components/Sidebar";
+import { NeuralSphere } from "@/components/NeuralSphere";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -35,14 +36,12 @@ export default function Home() {
   const [showDocImport, setShowDocImport] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | null>(null);
   const [isAIVisualMode, setIsAIVisualMode] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const supabase = createClient();
 
-  // Update time for display
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -105,7 +104,7 @@ export default function Home() {
   const efficiency = todayTasks.length > 0 ? Math.round((todayDone.length / todayTasks.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#020203] text-white font-sans overflow-x-hidden selection:bg-primary selection:text-white">
+    <div className="h-screen flex flex-col md:flex-row bg-[#020203] text-white font-sans overflow-hidden selection:bg-primary selection:text-white">
       {/* Overlays */}
       <AnimatePresence>
         {showTaskForm && <TaskForm onClose={() => setShowTaskForm(false)} onSuccess={fetchTasks} />}
@@ -118,7 +117,14 @@ export default function Home() {
             }}
           />
         )}
-        {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
+        {showNotifications && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowNotifications(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative w-full max-w-lg">
+              <NotificationPanel onClose={() => setShowNotifications(false)} />
+            </div>
+          </div>
+        )}
       </AnimatePresence>
 
       <Sidebar
@@ -132,153 +138,203 @@ export default function Home() {
         onActivateAI={() => setIsAIVisualMode(!isAIVisualMode)}
       />
 
-      <main className="flex-1 overflow-y-auto relative pb-32 md:pb-12 px-6 md:px-12 pt-8">
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
 
-        {/* Top Header Bar */}
-        <header className="flex justify-between items-center mb-8">
-          <div className="flex flex-col">
-            <span className="text-primary text-[10px] font-black uppercase tracking-[0.3em] font-outfit">
-              {format(currentTime, "MMM dd // HH:mm", { locale: fr })}
-            </span>
+        {/* Desktop Left: Cinematic Hero Section */}
+        <section className="hidden md:flex flex-1 flex-col justify-center px-16 relative border-r border-white/5">
+          <div className="absolute top-12 left-16 flex flex-col">
+            <span className="text-primary text-xs font-black uppercase tracking-[0.5em] font-outfit mb-1">Neural Connection Established</span>
+            <span className="text-white/20 text-[10px] font-mono">{format(currentTime, "HH:mm:ss", { locale: fr })}</span>
           </div>
-          <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center bg-white/5 group cursor-pointer hover:border-primary transition-colors">
-            <User className="w-5 h-5 text-white/40 group-hover:text-white" />
-          </div>
-        </header>
 
-        {showCalendar ? (
-          <CalendarView tasks={tasks} onClose={() => setShowCalendar(false)} onTaskClick={() => { }} />
-        ) : (
-          <div className="max-w-4xl mx-auto flex flex-col items-center">
-
-            <h1 className="hero-title text-6xl md:text-8xl mb-12 self-start">
+          <div className="relative z-10">
+            <motion.h1
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="hero-title text-[clamp(4rem,10vw,8rem)] leading-[0.85] mb-8"
+            >
               Ma<br />Journée
-            </h1>
-
-            {/* AI Visual Assistant Activation Area */}
-            <div className="relative w-72 h-72 flex items-center justify-center mb-16">
-              <motion.div
-                animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}
-                className="absolute inset-0 rounded-full border border-primary/20"
-              />
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-                className="absolute inset-4 rounded-full border border-dashed border-primary/10"
-              />
-
-              <div className="relative z-10 flex flex-col items-center gap-4">
-                <div className={`w-36 h-36 rounded-full flex items-center justify-center bg-[#020203] border border-white/10 relative overflow-hidden group cursor-pointer ${isAIVisualMode ? 'pulse-ring border-primary' : ''}`}
-                  onClick={() => setIsAIVisualMode(!isAIVisualMode)}>
-                  <Cpu className={`w-12 h-12 transition-all duration-500 ${isAIVisualMode ? 'text-primary scale-125' : 'text-white/20 group-hover:text-primary/50'}`} />
-                  {isAIVisualMode && (
-                    <motion.div
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="absolute bottom-6 left-header right-0 text-center"
-                    >
-                      <span className="text-[8px] font-black text-primary uppercase tracking-widest animate-pulse">Syncing...</span>
-                    </motion.div>
-                  )}
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Trigger AI</span>
-              </div>
-            </div>
-
-            {/* Efficiency Card */}
-            <section className="w-full glass-morphism p-8 mb-12 flex items-center gap-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-full opacity-10">
-                <div className="flex items-end h-full gap-1 p-4">
-                  {[40, 70, 50, 90, 60, 80].map((h, i) => (
-                    <div key={i} className="flex-1 bg-primary rounded-t-sm" style={{ height: `${h}%` }} />
-                  ))}
-                </div>
-              </div>
-              <div className="flex-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2 block">Efficiency</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black font-outfit">{efficiency}%</span>
-                </div>
-                <div className="w-full h-1 bg-white/5 rounded-full mt-4 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${efficiency}%` }}
-                    className="h-full bg-primary shadow-[0_0_10px_#3b82f6]"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Navigation Tabs */}
-            <nav className="w-full flex gap-8 mb-8 overflow-x-auto no-scrollbar pb-2">
-              {['Tout', 'Projet Alpha', 'Famille', 'Perso', 'Teams'].map((cat, i) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedTeamId(cat === 'Tout' ? null : cat === 'Perso' ? 'personal' : teams.find(t => t.name === cat)?.id || null)}
-                  className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${i === 0 ? 'text-primary border-b-2 border-primary pb-2' : 'text-white/30 hover:text-white'}`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </nav>
-
-            {/* Task Summary */}
-            <section className="w-full">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="hero-title text-xl">Sommaire des tâches</h2>
-                <Filter className="w-4 h-4 text-white/20 cursor-pointer hover:text-white" />
-              </div>
-
-              <div className="space-y-4">
-                <AnimatePresence mode="popLayout">
-                  {todoTasks.map((task) => (
-                    <motion.div
-                      layout
-                      key={task.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="group glass-morphism p-5 flex items-center gap-6 hover:border-primary/30 transition-all border-white/5 bg-white/2"
-                    >
-                      <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center bg-[#020203] text-primary group-hover:scale-110 transition-transform">
-                        <Activity className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-sm tracking-tight group-hover:text-primary transition-colors">{task.title}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-[10px] font-medium text-white/30">
-                          <Clock className="w-3 h-3" />
-                          <span>{task.due_date ? format(parseISO(task.due_date), "HH:mm") : '--:--'} — 11:30</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => toggleTaskStatus(task)}
-                        className="w-10 h-10 rounded-full border-2 border-white/10 flex items-center justify-center hover:border-primary/50 transition-colors"
-                      >
-                        <div className={`w-4 h-4 rounded-full transition-all ${task.status === 'done' ? 'bg-primary' : 'bg-transparent'}`} />
-                      </button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </section>
+            </motion.h1>
+            <p className="text-white/40 max-w-sm text-sm font-medium tracking-wide leading-relaxed">
+              Optimisez votre productivité avec l&apos;intelligence artificielle. <br />
+              Chaque tâche est un pas vers l&apos;excellence.
+            </p>
           </div>
-        )}
 
+          {/* Background Particles Decoration */}
+          <div className="absolute inset-0 pointer-events-none opacity-20">
+            <div className="absolute top-1/4 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[100px]" />
+            <div className="absolute bottom-1/4 left-0 w-64 h-64 bg-pink-500/10 rounded-full blur-[100px]" />
+          </div>
+        </section>
+
+        {/* Center: The Neural Sphere (Mobile Hero / Desktop Middle) */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] md:translate-y-[-50%] w-[320px] h-[320px] md:w-[450px] md:h-[450px] z-20">
+          <div className="w-full h-full relative group cursor-pointer" onClick={() => setIsAIVisualMode(!isAIVisualMode)}>
+            <NeuralSphere active={isAIVisualMode} />
+
+            {/* Orbital Rings */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
+              className="absolute inset-[-20px] rounded-full border border-primary/10 border-dashed"
+            />
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ repeat: Infinity, duration: 45, ease: "linear" }}
+              className="absolute inset-[-40px] rounded-full border border-white/5"
+            />
+
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none">
+              <div className="flex gap-1">
+                {[1, 2, 3].map(i => (
+                  <motion.div
+                    key={i}
+                    animate={{ opacity: [0.2, 1, 0.2] }}
+                    transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.3 }}
+                    className="w-1 h-1 rounded-full bg-primary"
+                  />
+                ))}
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-[0.6em] text-white/30">Trigger Sync</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Section / Scrollable Area */}
+        <section className="flex-1 overflow-y-auto no-scrollbar pt-20 md:pt-12 px-6 md:px-12 relative z-10 bg-[#020203]/40 backdrop-blur-sm">
+
+          {/* Mobile Only Header */}
+          <header className="flex md:hidden justify-between items-center mb-12">
+            <h1 className="hero-title text-4xl">Ma Journée</h1>
+            <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
+              <User className="w-5 h-5 text-white/40" />
+            </div>
+          </header>
+
+          <div className="max-w-2xl mx-auto md:ml-0 md:max-w-none pt-24 md:pt-0">
+            {showCalendar ? (
+              <CalendarView tasks={tasks} onClose={() => setShowCalendar(false)} onTaskClick={() => { }} />
+            ) : (
+              <div className="flex flex-col gap-12">
+
+                {/* Efficiency Section */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                  <section className="glass-morphism p-8 flex items-center gap-8 relative overflow-hidden group hover:border-primary/20 transition-all">
+                    <div className="flex-1">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2 block">Efficiency Today</span>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-5xl font-black font-outfit uppercase italic">{efficiency}%</span>
+                      </div>
+                      <div className="w-full h-1 bg-white/5 rounded-full mt-6 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${efficiency}%` }}
+                          className="h-full bg-primary shadow-[0_0_15px_#3b82f6]"
+                        />
+                      </div>
+                    </div>
+                    <Activity className="w-12 h-12 text-primary/20 group-hover:text-primary/40 transition-colors" />
+                  </section>
+                </div>
+
+                {/* Filter Tabs */}
+                <nav className="flex gap-8 overflow-x-auto no-scrollbar pb-2 border-b border-white/5">
+                  {['Tout', 'Projet Alpha', 'Perso', 'Teams'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedTeamId(cat === 'Tout' ? null : cat === 'Perso' ? 'personal' : teams.find(t => t.name === cat)?.id || null)}
+                      className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all pb-4 relative ${((cat === 'Tout' && !selectedTeamId) || (cat === 'Perso' && selectedTeamId === 'personal') || (teams.find(t => t.name === cat)?.id === selectedTeamId)) ? 'text-primary' : 'text-white/30 hover:text-white'}`}
+                    >
+                      {cat}
+                      {((cat === 'Tout' && !selectedTeamId) || (cat === 'Perso' && selectedTeamId === 'personal') || (teams.find(t => t.name === cat)?.id === selectedTeamId)) && (
+                        <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary" />
+                      )}
+                    </button>
+                  ))}
+                </nav>
+
+                {/* Task List */}
+                <section className="pb-32 md:pb-12">
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="hero-title text-2xl lowercase italic tracking-tight">Sommaire des tâches</h2>
+                    <div className="flex gap-4">
+                      <button onClick={() => setShowTaskForm(true)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary transition-all group">
+                        <Plus className="w-4 h-4 text-white/40 group-hover:text-white" />
+                      </button>
+                      <Filter className="w-5 h-5 text-white/10 hover:text-white cursor-pointer transition-colors" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <AnimatePresence mode="popLayout">
+                      {todoTasks.length > 0 ? todoTasks.map((task) => (
+                        <motion.div
+                          layout
+                          key={task.id}
+                          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          className="group glass-morphism p-6 flex items-center gap-6 hover:border-primary/20 transition-all cursor-pointer"
+                        >
+                          <div className="w-12 h-12 rounded-2xl border border-white/10 flex items-center justify-center bg-[#020203] text-primary transition-all group-hover:shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+                            <Activity className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-base tracking-tight mb-1 group-hover:text-primary transition-colors truncate">{task.title}</h3>
+                            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/20">
+                              <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {task.due_date ? format(parseISO(task.due_date), "HH:mm") : '--:--'}</span>
+                              <span className="w-1 h-1 rounded-full bg-white/10" />
+                              <span className={task.priority === 'high' ? 'text-red-500/50' : 'text-white/20'}>{task.priority}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleTaskStatus(task); }}
+                            className="w-12 h-12 rounded-full border border-white/5 bg-white/2 flex items-center justify-center hover:border-primary/30 transition-all overflow-hidden relative"
+                          >
+                            {task.status === 'done' && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute inset-0 bg-primary/20 flex items-center justify-center"><CheckCircle className="w-6 h-6 text-primary" /></motion.div>}
+                            <div className="w-3 h-3 rounded-full border-2 border-primary/20" />
+                          </button>
+                        </motion.div>
+                      )) : (
+                        <div className="py-20 flex flex-col items-center gap-4 opacity-20">
+                          <Sparkles className="w-12 h-12" />
+                          <span className="text-xs font-black uppercase tracking-widest">Tout est terminé</span>
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Neural Overlay (Active AI) */}
         <AnimatePresence>
           {(showAIChat || isAIVisualMode) && (
-            <div className="fixed inset-0 z-[110] bg-[#020203]/90 backdrop-blur-3xl flex flex-col p-6">
-              <div className="flex justify-between items-center mb-8">
-                <span className="text-[10px] font-black text-primary uppercase tracking-[0.5em]">Neural Link Active</span>
-                <button onClick={() => { setShowAIChat(false); setIsAIVisualMode(false); }} className="p-3 bg-white/5 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-500 transition-all">
-                  <X className="w-6 h-6" />
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] bg-[#020203]/95 backdrop-blur-3xl flex flex-col p-6 md:p-12"
+            >
+              <div className="flex justify-between items-center mb-12">
+                <div className="flex items-center gap-4">
+                  <div className="w-3 h-3 rounded-full bg-primary animate-pulse shadow-[0_0_15px_#3b82f6]" />
+                  <span className="text-[10px] font-black text-primary uppercase tracking-[0.5em]">Neural Link Status: Syncing</span>
+                </div>
+                <button onClick={() => { setShowAIChat(false); setIsAIVisualMode(false); }} className="p-4 bg-white/5 border border-white/10 rounded-full hover:bg-red-500/20 text-white/40 hover:text-red-500 transition-all">
+                  <X className="w-8 h-8" />
                 </button>
               </div>
-              {isAIVisualMode ? (
-                <LiveVoiceAssistant onClose={() => setIsAIVisualMode(false)} />
-              ) : (
-                <AIChat initialMessage={aiInitialMessage ?? undefined} />
-              )}
-            </div>
+
+              <div className="flex-1 flex flex-col items-center">
+                {isAIVisualMode ? (
+                  <LiveVoiceAssistant onClose={() => setIsAIVisualMode(false)} />
+                ) : (
+                  <AIChat initialMessage={aiInitialMessage ?? undefined} />
+                )}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </main>

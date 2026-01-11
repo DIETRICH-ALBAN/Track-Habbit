@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { motion } from "framer-motion";
+import { MiniNeuralSphere } from "./NeuralSphere";
 
 interface SidebarProps {
     onToggleCalendar?: () => void;
@@ -99,10 +100,10 @@ export default function Sidebar({
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={onActivateAI}
-                        className="w-16 h-16 bg-[#020203] border-4 border-primary rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] relative z-10"
+                        className="w-16 h-16 bg-[#020203]/80 backdrop-blur-md border-2 border-primary/20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] relative z-10 overflow-hidden"
                     >
-                        <div className="w-10 h-10 border-2 border-primary/50 rounded-full flex items-center justify-center">
-                            <Cpu className="w-6 h-6 text-primary" strokeWidth={3} />
+                        <div className="w-12 h-12">
+                            <MiniNeuralSphere active={showAIChat} />
                         </div>
                     </motion.button>
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-primary/20 rounded-full blur-2xl animate-pulse" />
