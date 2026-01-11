@@ -28,6 +28,8 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const lastTalkingTimeRef = useRef<number>(Date.now());
     const statusRef = useRef(status);
     const isActiveRef = useRef(isActive);
     const [shake, setShake] = useState(false);
@@ -35,6 +37,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     // Pour l'audio natif (Fallback si STT échoue)
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+
 
     // Synchronize refs with state to avoid stale closures in events
     useEffect(() => { statusRef.current = status; }, [status]);
@@ -44,6 +47,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         setIsActive(false);
         setStatus("idle");
         setDebugInfo("");
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         if (recognitionRef.current) {
             try { recognitionRef.current.stop(); } catch (e) { }
         }
@@ -238,6 +242,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         setTranscript("");
         lastTranscriptRef.current = "";
         audioChunksRef.current = [];
+        lastTalkingTimeRef.current = Date.now();
 
         // Débloquer l'audio
         const unlockUtterance = new SpeechSynthesisUtterance('');
@@ -248,7 +253,11 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             // Demande le flux micro une seule fois pour tous
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            // 1. Lancer MediaRecorder (Fallback Robuste)
+            // Check Mobile
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            console.log("Is Mobile:", isMobile);
+
+            // 1. Lancer MediaRecorder (Toujours actif pour le fallback)
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
             mediaRecorder.ondataavailable = (e) => {
@@ -256,7 +265,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             };
             mediaRecorder.onstop = async () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-                // Si pas de transcript, on envoie l'audio
+                // Si pas de transcript textuel (cas mobile), on envoie l'audio
                 if (!lastTranscriptRef.current.trim() && isActiveRef.current) {
                     const reader = new FileReader();
                     reader.readAsDataURL(audioBlob);
@@ -268,16 +277,20 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             };
             mediaRecorder.start();
 
-            // 2. Lancer la reconnaissance vocale browser (UI réactive)
-            recognitionRef.current = initRecognition();
-            if (recognitionRef.current) {
-                recognitionRef.current.start();
-                console.log("Speech recognition started.");
+            // 2. STT Engine (SpeechRecognition)
+            // SUR MOBILE : On DESACTIVE SpeechRecognition pour éviter les "bip" boucles.
+            // On s'appuie 100% sur le VAD (Voice Activity Detection) et l'envoi Audio.
+            if (!isMobile) {
+                recognitionRef.current = initRecognition();
+                if (recognitionRef.current) {
+                    recognitionRef.current.start();
+                }
             } else {
-                console.warn("STT not supported, falling back to pure recording");
+                setDebugInfo("Mode Audio Mobile");
+                setStatus("listening");
             }
 
-            // 3. Visualiseur
+            // 3. VAD (Voice Activity Detection) via AudioContext
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
             const source = audioContextRef.current.createMediaStreamSource(stream);
             analyserRef.current = audioContextRef.current.createAnalyser();
@@ -286,10 +299,39 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
             const updateVolume = () => {
                 if (!analyserRef.current || !isActiveRef.current) return;
+
                 const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
                 analyserRef.current.getByteFrequencyData(dataArray);
                 const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
-                setVolume(average / 128);
+                const normalizedVol = average / 128;
+                setVolume(normalizedVol);
+
+                // Logic VAD style ChatGPT
+                if (statusRef.current === "listening") {
+                    if (normalizedVol > 0.1) { // Seuil de parole
+                        lastTalkingTimeRef.current = Date.now();
+                        // Reset timeout si on parle
+                        if (silenceTimerRef.current) {
+                            clearTimeout(silenceTimerRef.current);
+                            silenceTimerRef.current = null;
+                        }
+                    } else {
+                        // Silence détecté
+                        const silenceDuration = Date.now() - lastTalkingTimeRef.current;
+
+                        // Si le silence dure > 2s et qu'on a déjà parlé un peu (pour éviter trigger au start)
+                        if (silenceDuration > 2000 && audioChunksRef.current.length > 5) {
+                            if (!silenceTimerRef.current) {
+                                console.log("Silence detected, waiting to cut...");
+                                silenceTimerRef.current = setTimeout(() => {
+                                    console.log("Auto-cutting due to silence");
+                                    handleSubmit(); // Simule le clic "Stop"
+                                }, 500); // Petit buffer de sécurité
+                            }
+                        }
+                    }
+                }
+
                 animationFrameRef.current = requestAnimationFrame(updateVolume);
             };
             updateVolume();
