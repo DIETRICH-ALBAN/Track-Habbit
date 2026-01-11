@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
 import * as xlsx from 'xlsx';
+// @ts-ignore
+const pdf = require('pdf-parse');
 
 export async function POST(request: NextRequest) {
     try {
