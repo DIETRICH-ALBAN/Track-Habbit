@@ -82,9 +82,7 @@ export async function POST(request: NextRequest) {
 
         const cleanHistory = chatHistory?.reverse().map((h: any) => ({
             role: h.role,
-            content: typeof h.content === 'string'
-                ? h.content.replace(/```json[\s\S]*?```/g, '').trim() // Clean old JSON blocks
-                : h.content
+            content: h.content // On garde TOUT le contenu, y compris les JSON, pour que l'IA ait le contexte (IDs, etc.)
         })) || [];
 
         const messages = [

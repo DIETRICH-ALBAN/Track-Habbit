@@ -168,9 +168,9 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         const recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
 
-        // Android Chrome stability: continuous = false is often more reliable
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        recognition.continuous = !isMobile;
+        // On réactive le mode continu même sur mobile pour éviter la boucle "Bip/Coupure/Bip"
+        // Chrome Android gère le continu, même si c'est parfois instable, c'est mieux que le hachage.
+        recognition.continuous = true;
         recognition.interimResults = true;
 
         recognition.onstart = () => {
