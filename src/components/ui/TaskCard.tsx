@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Activity, Clock, CheckCircle2 } from "lucide-react";
+import { Activity, Clock, CheckCircle2, ChevronRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Task } from "@/types/task";
@@ -18,66 +18,59 @@ export function TaskCard({ task, onClick, index = 0 }: TaskCardProps) {
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.4, delay: index * 0.08, ease: [0.23, 1, 0.32, 1] }}
-            whileHover={{ x: 6, transition: { duration: 0.2 } }}
+            transition={{ duration: 0.4, delay: index * 0.05 }}
+            whileHover={{ x: 4, transition: { duration: 0.2 } }}
             onClick={onClick}
             className={cn(
-                "glass-panel p-5 flex items-center gap-5 group cursor-pointer relative",
-                isDone && "opacity-50"
+                "glass-panel p-4 flex items-center gap-4 group cursor-pointer relative overflow-hidden",
+                isDone ? "opacity-40" : "opacity-100"
             )}
         >
-            {/* Neon Status Indicator */}
-            <div className={cn(
-                "absolute left-0 top-0 bottom-0 w-1 rounded-r-full transition-all duration-300",
-                isDone
-                    ? "bg-[#00d4ff] shadow-[0_0_10px_rgba(0,212,255,0.5)]"
-                    : "bg-[#a855f7] group-hover:w-1.5 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-            )} />
-
             {/* Icon */}
             <div className={cn(
-                "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300 ml-2",
+                "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border transition-all duration-300",
                 isDone
-                    ? "bg-[#00d4ff]/10 text-[#00d4ff]"
-                    : "bg-white/5 text-[#a855f7]/60 group-hover:bg-[#a855f7]/10 group-hover:text-[#a855f7]"
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                    : "bg-indigo-600/10 border-indigo-600/20 text-indigo-500 group-hover:bg-indigo-600 group-hover:text-white"
             )}>
-                {isDone ? <CheckCircle2 size={22} /> : <Activity size={22} />}
+                {isDone ? <CheckCircle2 size={18} /> : <Activity size={18} />}
             </div>
 
             {/* Content */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                 <h3 className={cn(
-                    "font-bold tracking-tight transition-all duration-300 truncate text-lg",
-                    isDone ? "text-white/40 line-through" : "text-white/90 group-hover:text-white"
+                    "font-semibold tracking-tight transition-all duration-300 truncate",
+                    isDone ? "text-slate-500 line-through" : "text-white group-hover:text-white"
                 )}>
                     {task.title}
                 </h3>
-                <div className="flex items-center gap-3 mt-2">
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
-                        <Clock size={12} className="text-white/30" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-slate-500">
+                        <Clock size={12} strokeWidth={2.5} />
+                        <span className="text-[11px] font-medium">
                             {task.due_date ? format(parseISO(task.due_date), "HH:mm") : 'À planifier'}
                         </span>
                     </div>
                     {task.team && (
-                        <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#d946ef]/70">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
                             {task.team.name}
                         </span>
                     )}
                 </div>
             </div>
 
-            {/* Check Button */}
-            <div className={cn(
-                "w-11 h-11 rounded-full border-2 flex items-center justify-center transition-all duration-300",
-                isDone
-                    ? "border-[#00d4ff]/50 bg-[#00d4ff]/10 text-[#00d4ff]"
-                    : "border-white/10 group-hover:border-[#a855f7]/50 group-hover:bg-[#a855f7]/5 text-transparent group-hover:text-[#a855f7]/50"
-            )}>
-                <CheckCircle2 size={18} />
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+                <div className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all",
+                    isDone ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" : "bg-white/5 border-white/10 text-slate-400 group-hover:border-indigo-500/50 group-hover:text-indigo-400"
+                )}>
+                    {isDone ? "Terminé" : "En cours"}
+                </div>
+                <ChevronRight size={16} className="text-slate-600 group-hover:text-white transition-colors" />
             </div>
         </motion.div>
     );

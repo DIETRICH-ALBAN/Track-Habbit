@@ -162,11 +162,11 @@ export default function Home() {
 
                 {/* Section 1: Top Metrics (Juju Style) */}
                 <div>
-                  <div className="section-label">Statistiques Clés</div>
+                  <div className="section-tag">Statistiques Clés</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <StatCard label="Tâches Total" value={tasks.length} icon={ListChecks} color="purple" delay={0} />
-                    <StatCard label="En cours" value={todoTasks.length} icon={Activity} color="magenta" delay={0.1} />
-                    <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} color="cyan" delay={0.2} />
+                    <StatCard label="Tâches Total" value={tasks.length} icon={ListChecks} color="indigo" delay={0} />
+                    <StatCard label="En cours" value={todoTasks.length} icon={Activity} color="blue" delay={0.1} />
+                    <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} color="indigo" delay={0.2} />
                     <StatCard label="Équipes" value={teams.length} icon={Users} color="white" delay={0.3} />
                   </div>
                 </div>
@@ -177,10 +177,10 @@ export default function Home() {
                   {/* Main Task Feed (Clarity Juju) */}
                   <div className="xl:col-span-2 flex flex-col gap-6">
                     <div className="flex justify-between items-end">
-                      <div className="section-label">Aujourd&apos;hui</div>
-                      <button onClick={() => setShowTaskForm(true)} className="flex items-center gap-2 text-primary hover:text-primary-dark transition-colors">
+                      <div className="section-tag">Aujourd&apos;hui</div>
+                      <button onClick={() => setShowTaskForm(true)} className="flex items-center gap-2 text-indigo-500 hover:text-indigo-400 transition-colors">
                         <Plus size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Ajouter</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Ajouter</span>
                       </button>
                     </div>
 
@@ -203,32 +203,34 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* AI Neural Side Hub (Xora Ambience) */}
+                  {/* AI Neural Side Hub (Copilot Aesthetic) */}
                   <div className="flex flex-col gap-6">
-                    <div className="section-label px-4">Système Cognitif</div>
-                    <div className="glass-panel rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center flex-1 relative overflow-hidden h-[450px] border-[#a855f7]/10">
+                    <div className="section-tag px-4">Système Cognitif</div>
+                    <div className="glass-panel rounded-[2rem] p-8 flex flex-col items-center justify-center text-center flex-1 relative overflow-hidden h-[450px]">
                       {/* BG Glows */}
-                      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#a855f7]/20 blur-[60px] rounded-full animate-pulse" />
-                      <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-[#00d4ff]/10 blur-[60px] rounded-full animate-float" />
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-indigo-500/10 blur-[80px] rounded-full" />
 
-                      <div className="relative z-10 w-full h-48 mb-8 cursor-pointer group" onClick={() => setIsAIVisualMode(true)}>
+                      <div className="relative z-20 w-full h-48 mb-8 cursor-pointer group" onClick={() => setIsAIVisualMode(true)}>
                         <NeuralSphere active={isAIVisualMode} />
-                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 scale-75">
-                          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#a855f7] animate-pulse-glow">
-                            Neural Sync // Active
-                          </span>
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
+                          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                              Copilot // Active
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="relative z-10">
-                        <h3 className="text-xl font-black display-title mb-3 text-gradient">L&apos;IA est à l&apos;écoute.</h3>
-                        <p className="body-text text-xs mb-8 px-6">
-                          Interagissez par la voix ou par chat pour automatiser vos flux de travail.
+                      <div className="relative z-20">
+                        <h3 className="text-2xl font-bold title-gradient mb-3">L&apos;IA est à l&apos;écoute.</h3>
+                        <p className="text-slate-400 text-xs mb-8 px-6 leading-relaxed">
+                          Interagissez par la voix ou par chat pour automatiser vos tâches quotidiennes.
                         </p>
 
                         <button
                           onClick={() => setIsAIVisualMode(true)}
-                          className="btn-neon w-full py-5 rounded-2xl text-[10px] shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all hover:shadow-[0_0_40px_rgba(168,85,247,0.5)]"
+                          className="btn-primary-glow w-full"
                         >
                           Lancer l&apos;Assistant
                         </button>
