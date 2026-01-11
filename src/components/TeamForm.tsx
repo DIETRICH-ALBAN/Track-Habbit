@@ -46,7 +46,7 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
             onSuccess();
             onClose();
         } catch (err: any) {
-            setError(err.message);
+            setError(err instanceof Error ? err.message : "Une erreur est survenue");
         } finally {
             setLoading(false);
         }
@@ -67,12 +67,12 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
                         <Users className="w-8 h-8 text-primary" />
                     </div>
                     <h2 className="text-2xl font-outfit font-bold gradient-text">Nouvelle Équipe</h2>
-                    <p className="text-white/40 text-sm">Créez une équipe pour collaborer avec d'autres.</p>
+                    <p className="text-white/40 text-sm">Créez une équipe pour collaborer avec d&apos;autres.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Nom de l'équipe *</label>
+                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Nom de l&apos;équipe *</label>
                         <input
                             type="text"
                             required
@@ -95,7 +95,7 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
                         className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
-                        <span>Créer l'équipe</span>
+                        <span>Créer l&apos;équipe</span>
                     </button>
                 </form>
             </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical, Users, X } from "lucide-react";
+import { Plus, MessageSquare, FileText, Calendar, CheckCircle2, Circle, Clock, LogOut, Trash2, MoreVertical, Users, X, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
@@ -10,6 +10,7 @@ import AIChat from "@/components/AIChat";
 import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
 import DocumentImport from "@/components/DocumentImport";
 import CalendarView from "@/components/CalendarView";
+import NotificationPanel from "@/components/NotificationPanel";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -17,7 +18,7 @@ import { fr } from "date-fns/locale";
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(null); // Still keeping user as any for now but could be User from supabase
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -26,6 +27,7 @@ export default function Home() {
   const [showAIChat, setShowAIChat] = useState(false);
   const [showDocImport, setShowDocImport] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | null>(null);
 
@@ -158,6 +160,11 @@ export default function Home() {
   const todoTasks = tasks.filter(t => t.status !== 'done');
   const doneTasks = tasks.filter(t => t.status === 'done');
 
+  // Calculate daily progress
+  const todayTasks = tasks.filter(t => t.due_date && isToday(parseISO(t.due_date)));
+  const todayDone = todayTasks.filter(t => t.status === 'done');
+  const progress = todayTasks.length > 0 ? Math.round((todayDone.length / todayTasks.length) * 100) : 0;
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white font-sans overflow-x-hidden pb-20 md:pb-0">
       {/* Task Form Modal */}
@@ -178,6 +185,13 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Notification Panel Overlay */}
+      <AnimatePresence>
+        {showNotifications && (
+          <NotificationPanel onClose={() => setShowNotifications(false)} />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar - Navigation (Desktop: Left, Mobile: Bottom Tab Bar) */}
       <aside className="fixed bottom-0 left-0 right-0 md:relative md:w-20 border-t md:border-t-0 md:border-r border-white/10 flex flex-row md:flex-col items-center py-4 md:py-8 px-6 md:px-0 gap-8 bg-[#050505]/80 backdrop-blur-xl z-[60]">
@@ -207,6 +221,12 @@ export default function Home() {
             <FileText className="w-6 h-6 mx-auto" />
           </button>
           <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className={`p-3 rounded-xl transition-all border ${showNotifications ? 'bg-white/10 text-primary border-primary/20' : 'bg-white/5 text-white/60 border-transparent hover:text-primary'}`}
+          >
+            <Bell className="w-6 h-6 mx-auto" />
+          </button>
+          <button
             onClick={handleLogout}
             className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-all text-red-500/60 hover:text-red-500"
           >
@@ -232,13 +252,30 @@ export default function Home() {
 
             {/* Desktop New Task Button */}
             {!showCalendar && (
-              <button
-                onClick={() => setShowTaskForm(true)}
-                className="hidden md:flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
-              >
-                <Plus className="w-5 h-5" strokeWidth={3} />
-                <span>Nouvelle Tâche</span>
-              </button>
+              <div className="flex items-center gap-6">
+                {todayTasks.length > 0 && (
+                  <div className="hidden lg:flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Progression du jour</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-32 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          className="h-full bg-gradient-to-r from-primary to-blue-400"
+                        />
+                      </div>
+                      <span className="text-sm font-bold text-primary">{progress}%</span>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowTaskForm(true)}
+                  className="hidden md:flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
+                >
+                  <Plus className="w-5 h-5" strokeWidth={3} />
+                  <span>Nouvelle Tâche</span>
+                </button>
+              </div>
             )}
           </header>
 
@@ -425,7 +462,7 @@ export default function Home() {
                     <CheckCircle2 className="w-10 h-10 text-white/20" />
                   </div>
                   <h3 className="text-xl font-bold mb-2">Aucune tâche</h3>
-                  <p className="text-white/40 mb-6">Commencez par créer votre première tâche !</p>
+                  <p className="text-white/40 mb-6">Commencez par créer votre première tâche&nbsp;!</p>
                   <button
                     onClick={() => setShowTaskForm(true)}
                     className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all"
