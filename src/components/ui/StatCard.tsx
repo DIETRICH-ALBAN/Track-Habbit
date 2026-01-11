@@ -8,38 +8,50 @@ interface StatCardProps {
     label: string;
     value: string | number;
     icon: LucideIcon;
-    color?: string;
+    color?: "cyan" | "purple" | "magenta" | "white";
     delay?: number;
 }
 
-export function StatCard({ label, value, icon: Icon, color = "text-primary", delay = 0 }: StatCardProps) {
+const colorMap = {
+    cyan: "text-[#00d4ff]",
+    purple: "text-[#a855f7]",
+    magenta: "text-[#d946ef]",
+    white: "text-white",
+};
+
+const glowMap = {
+    cyan: "rgba(0, 212, 255, 0.3)",
+    purple: "rgba(168, 85, 247, 0.3)",
+    magenta: "rgba(217, 70, 239, 0.3)",
+    white: "rgba(255, 255, 255, 0.1)",
+};
+
+export function StatCard({ label, value, icon: Icon, color = "purple", delay = 0 }: StatCardProps) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay, ease: [0.23, 1, 0.32, 1] }}
-            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-            className="glass-panel p-6 rounded-[2rem] group relative overflow-hidden"
+            transition={{ duration: 0.6, delay, ease: [0.23, 1, 0.32, 1] }}
+            whileHover={{ y: -4, transition: { duration: 0.25 } }}
+            className="glass-panel p-6 group"
+            style={{
+                "--hover-glow": `0 0 40px ${glowMap[color]}`
+            } as React.CSSProperties}
         >
-            {/* Selection Glow */}
-            <div className={cn(
-                "absolute -bottom-10 -right-10 w-32 h-32 blur-3xl rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-current",
-                color
-            )} />
-
-            <div className="flex items-center gap-4 mb-4 relative z-10">
+            <div className="flex items-center gap-4 mb-5">
                 <div className={cn(
-                    "p-2.5 rounded-2xl bg-white/5 transition-colors duration-300 group-hover:bg-white/10",
-                    color
+                    "p-3 rounded-2xl bg-white/5 transition-all duration-300 group-hover:scale-110",
+                    colorMap[color]
                 )}>
-                    <Icon size={20} />
+                    <Icon size={22} strokeWidth={2.5} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 group-hover:text-white/50 transition-colors">
-                    {label}
-                </span>
+                <span className="section-label mb-0">{label}</span>
             </div>
 
-            <div className="text-4xl font-black font-outfit lowercase italic tracking-tight relative z-10">
+            <div className={cn(
+                "text-4xl font-black tracking-tight transition-all duration-300",
+                colorMap[color]
+            )}>
                 {value}
             </div>
         </motion.div>

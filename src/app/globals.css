@@ -1,100 +1,261 @@
-/* src/app/globals.css */
+/* src/app/globals.css - Bogdan Falin Inspired Theme */
 @import "tailwindcss";
 
 :root {
-  /* Colors - Inspired by Xora & Juju */
-  --background: #030303;
-  --foreground: #ffffff;
+  /* === BOGDAN FALIN INSPIRED COLOR PALETTE === */
 
-  --primary: #536dfe;
-  /* Electric Blue/Indigo */
-  --primary-dark: #3f51b5;
-  --secondary: #d500f9;
-  /* Vibrant Purple/Neon */
-  --accent: #00e5ff;
-  /* Cyan accent */
+  /* Background Gradients */
+  --bg-primary: #030303;
+  --bg-secondary: #080810;
+  --bg-gradient: linear-gradient(135deg, #030303 0%, #0a0a12 50%, #030303 100%);
 
-  /* Cards & Elevate */
-  --card-bg: rgba(15, 15, 18, 0.4);
-  --card-border: rgba(255, 255, 255, 0.05);
-  --card-border-hover: rgba(83, 109, 254, 0.2);
+  /* Neon Accent Colors */
+  --accent-cyan: #00d4ff;
+  --accent-purple: #a855f7;
+  --accent-magenta: #d946ef;
+  --accent-blue: #3b82f6;
+
+  /* Glow Intensities */
+  --glow-cyan: 0 0 30px rgba(0, 212, 255, 0.4);
+  --glow-purple: 0 0 30px rgba(168, 85, 247, 0.4);
+  --glow-magenta: 0 0 30px rgba(217, 70, 239, 0.4);
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.3);
+
+  /* Cards (Glassmorphism) */
+  --card-bg: rgba(255, 255, 255, 0.02);
+  --card-border: rgba(255, 255, 255, 0.06);
+  --card-border-hover: rgba(168, 85, 247, 0.3);
 
   /* Layout */
   --sidebar-width: 260px;
   --sidebar-collapsed: 80px;
+  --border-radius: 20px;
 }
 
+/* === BASE STYLES === */
 @layer base {
   body {
-    background-color: var(--background);
-    color: var(--foreground);
-    @apply antialiased;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 
   ::selection {
-    background-color: rgba(83, 109, 254, 0.3);
+    background-color: rgba(168, 85, 247, 0.4);
     color: #ffffff;
   }
 }
 
-/* --- Phase 1: Interactive Effects & Ambience --- */
+/* === AMBIENT BACKGROUND EFFECTS === */
 
-/* 1. Glassmorphism System */
-.glass-panel {
-  background: var(--card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--card-border);
-  transition: border-color 0.3s ease, background 0.3s ease, transform 0.3s ease;
+/* Mesh Gradient Orbs */
+.ambient-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.glass-panel:hover {
-  border-color: var(--card-border-hover);
-  background: rgba(15, 15, 18, 0.6);
+.ambient-glow::before {
+  content: '';
+  position: fixed;
+  top: -20%;
+  right: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: float-slow 20s ease-in-out infinite;
 }
 
-/* 2. Neon Text & Elements */
-.text-neon-primary {
-  text-shadow: 0 0 10px rgba(83, 109, 254, 0.5), 0 0 20px rgba(83, 109, 254, 0.3);
+.ambient-glow::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.12) 0%, transparent 70%);
+  filter: blur(80px);
+  animation: float-slow 25s ease-in-out infinite reverse;
 }
 
-.text-neon-secondary {
-  text-shadow: 0 0 10px rgba(213, 0, 249, 0.5), 0 0 20px rgba(213, 0, 249, 0.3);
+@keyframes float-slow {
+
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+
+  50% {
+    transform: translateY(-30px) translateX(20px);
+  }
 }
 
-/* 3. Subtle Texture Overlays */
+/* Subtle Noise Texture */
 .film-grain {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 1000;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
+/* Vignette */
 .vignette {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 999;
-  background: radial-gradient(circle at 50% 50%, transparent 20%, rgba(0, 0, 0, 0.5) 100%);
+  background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
 }
 
-/* 4. Typography - Hierarchy */
+/* === GLASSMORPHISM CARDS === */
+.glass-panel {
+  background: var(--card-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--border-radius);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.glass-panel:hover {
+  border-color: var(--card-border-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--glow-purple);
+}
+
+/* === NEON TEXT EFFECTS === */
+.text-neon {
+  text-shadow:
+    0 0 10px currentColor,
+    0 0 20px currentColor,
+    0 0 40px currentColor;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 50%, var(--accent-magenta) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* === TYPOGRAPHY HIERARCHY === */
 .display-title {
-  @apply font-black tracking-tighter leading-[0.9] uppercase;
-  font-family: var(--font-outfit), sans-serif;
-  letter-spacing: -0.05em;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 0.95;
 }
 
 .section-label {
-  @apply text-[10px] font-bold uppercase tracking-[0.4em] text-white/30 mb-2;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
 }
 
-/* 5. Custom Scrollbar */
+.body-text {
+  font-weight: 400;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+/* === ANIMATED BORDER GLOW === */
+.border-glow {
+  position: relative;
+}
+
+.border-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple), var(--accent-magenta), var(--accent-cyan));
+  background-size: 300% 300%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  animation: gradient-flow 4s ease infinite;
+}
+
+.border-glow:hover::after {
+  opacity: 1;
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* === BUTTONS === */
+.btn-neon {
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-magenta) 100%);
+  color: white;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--glow-purple);
+}
+
+.btn-neon:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 50px rgba(168, 85, 247, 0.6);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  background: rgba(168, 85, 247, 0.05);
+}
+
+/* === SCROLLBAR === */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -102,23 +263,23 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(168, 85, 247, 0.3);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(83, 109, 254, 0.4);
+  background: rgba(168, 85, 247, 0.6);
 }
 
-/* 6. Animations */
+/* === ANIMATIONS === */
 .animate-enter {
-  animation: enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: enter 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
 @keyframes enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
 
   to {
@@ -127,7 +288,39 @@
   }
 }
 
-/* Hide scrollbar utility */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(168, 85, 247, 0.6);
+  }
+}
+
+/* === UTILITY CLASSES === */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -135,4 +328,21 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Legacy compatibility */
+.text-primary {
+  color: var(--accent-purple);
+}
+
+.text-secondary {
+  color: var(--accent-magenta);
+}
+
+.text-accent {
+  color: var(--accent-cyan);
+}
+
+.bg-primary {
+  background-color: var(--accent-purple);
 }

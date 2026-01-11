@@ -105,6 +105,7 @@ export default function Home() {
       {/* Background Ambience */}
       <div className="film-grain" />
       <div className="vignette" />
+      <div className="ambient-glow" />
 
       {/* Main Layout Container */}
       <div className="flex flex-col md:flex-row h-screen overflow-hidden">
@@ -126,26 +127,26 @@ export default function Home() {
           {/* Top Header - Glass Navbar */}
           <header className="h-20 flex items-center justify-between px-8 border-b border-white/5 bg-[#030303]/40 backdrop-blur-xl z-30 shrink-0">
             <div className="flex flex-col">
-              <h1 className="text-xl font-bold tracking-tight">Bonjour, {user.email?.split('@')[0]}</h1>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30">
+              <h1 className="text-xl font-black display-title tracking-tight text-gradient">Bonjour, {user.email?.split('@')[0]}</h1>
+              <span className="section-label mb-0">
                 {format(currentTime, "EEEE dd MMMM", { locale: fr })}
               </span>
             </div>
 
             <div className="flex items-center gap-6">
               <div className="hidden md:flex flex-col items-end">
-                <span className="text-[10px] font-black tracking-widest uppercase text-primary">System Pulse</span>
-                <span className="text-xs font-mono text-white/20">Active // 2.4s latency</span>
+                <span className="section-label mb-0 text-[#a855f7] opacity-100 italic">Neural Sync</span>
+                <span className="text-[10px] font-mono text-white/20 whitespace-nowrap">latency // 24ms</span>
               </div>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="w-10 h-10 rounded-full glass-panel flex items-center justify-center relative hover:scale-105 active:scale-95 transition-all"
+                className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center relative hover:scale-105 active:scale-95 transition-all"
               >
                 <Bell size={18} className="text-white/60" />
-                <div className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-[#030303]" />
+                <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-[#d946ef] rounded-full shadow-[0_0_8px_#d946ef]" />
               </button>
-              <div className="w-10 h-10 rounded-full glass-panel flex items-center justify-center overflow-hidden border-primary/20">
-                <User size={20} className="text-primary" />
+              <div className="w-10 h-10 rounded-xl glass-panel flex items-center justify-center overflow-hidden border-[#a855f7]/20 group cursor-pointer hover:border-[#a855f7]/50 transition-all">
+                <User size={20} className="text-[#a855f7] group-hover:scale-110 transition-transform" />
               </div>
             </div>
           </header>
@@ -164,10 +165,10 @@ export default function Home() {
                 <div>
                   <div className="section-label">Statistiques Clés</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    <StatCard label="Tâches Total" value={tasks.length} icon={ListChecks} color="text-primary" delay={0} />
-                    <StatCard label="En cours" value={todoTasks.length} icon={Activity} color="text-secondary" delay={0.1} />
-                    <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} color="text-accent" delay={0.2} />
-                    <StatCard label="Équipes" value={teams.length} icon={Users} color="text-white" delay={0.3} />
+                    <StatCard label="Tâches Total" value={tasks.length} icon={ListChecks} color="purple" delay={0} />
+                    <StatCard label="En cours" value={todoTasks.length} icon={Activity} color="magenta" delay={0.1} />
+                    <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} color="cyan" delay={0.2} />
+                    <StatCard label="Équipes" value={teams.length} icon={Users} color="white" delay={0.3} />
                   </div>
                 </div>
 
@@ -205,29 +206,34 @@ export default function Home() {
 
                   {/* AI Neural Side Hub (Xora Ambience) */}
                   <div className="flex flex-col gap-6">
-                    <div className="section-label">Interface IA</div>
-                    <div className="glass-panel rounded-3xl p-8 flex flex-col items-center justify-center text-center flex-1 relative overflow-hidden h-[400px]">
-                      {/* BG Glow */}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-primary/20 blur-[80px] rounded-full" />
+                    <div className="section-label px-4">Système Cognitif</div>
+                    <div className="glass-panel rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center flex-1 relative overflow-hidden h-[450px] border-[#a855f7]/10">
+                      {/* BG Glows */}
+                      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-[#a855f7]/20 blur-[60px] rounded-full animate-pulse" />
+                      <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-[#00d4ff]/10 blur-[60px] rounded-full animate-float" />
 
-                      <div className="relative z-10 w-full h-48 mb-6" onClick={() => setIsAIVisualMode(true)}>
+                      <div className="relative z-10 w-full h-48 mb-8 cursor-pointer group" onClick={() => setIsAIVisualMode(true)}>
                         <NeuralSphere active={isAIVisualMode} />
-                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 scale-75 opacity-40">
-                          <span className="text-[9px] font-black uppercase tracking-[0.5em] animate-pulse">Neural Sync</span>
+                        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 scale-75">
+                          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#a855f7] animate-pulse-glow">
+                            Neural Sync // Active
+                          </span>
                         </div>
                       </div>
 
-                      <h3 className="text-xl font-bold tracking-tight mb-2">Prête à vous aider.</h3>
-                      <p className="text-xs text-white/30 leading-relaxed mb-6 px-4">
-                        Demandez-moi d&apos;organiser votre journée ou d&apos;analyser vos documents.
-                      </p>
+                      <div className="relative z-10">
+                        <h3 className="text-xl font-black display-title mb-3 text-gradient">L&apos;IA est à l&apos;écoute.</h3>
+                        <p className="body-text text-xs mb-8 px-6">
+                          Interagissez par la voix ou par chat pour automatiser vos flux de travail.
+                        </p>
 
-                      <button
-                        onClick={() => setIsAIVisualMode(true)}
-                        className="w-full py-4 glass-panel rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-primary hover:text-white transition-all"
-                      >
-                        Activer l&apos;assistant
-                      </button>
+                        <button
+                          onClick={() => setIsAIVisualMode(true)}
+                          className="btn-neon w-full py-5 rounded-2xl text-[10px] shadow-[0_0_20px_rgba(168,85,247,0.3)] transition-all hover:shadow-[0_0_40px_rgba(168,85,247,0.5)]"
+                        >
+                          Lancer l&apos;Assistant
+                        </button>
+                      </div>
                     </div>
                   </div>
 

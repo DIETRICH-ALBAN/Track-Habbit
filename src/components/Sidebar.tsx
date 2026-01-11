@@ -113,10 +113,10 @@ export default function Sidebar({
                             exit={{ opacity: 0, x: -10 }}
                             className="flex items-center gap-3"
                         >
-                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(83,109,254,0.5)]">
+                            <div className="w-8 h-8 bg-gradient-to-br from-[#a855f7] to-[#d946ef] rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)]">
                                 <Cpu className="w-5 h-5 text-white" />
                             </div>
-                            <span className="font-outfit font-black uppercase tracking-widest text-sm">Track Habbit</span>
+                            <span className="font-outfit font-black uppercase tracking-widest text-sm text-gradient">Track Habbit</span>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -139,18 +139,18 @@ export default function Sidebar({
                         onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
                         className={cn(
                             "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all relative group",
-                            item.active ? "bg-primary/10 text-primary" : "text-white/40 hover:text-white hover:bg-white/5"
+                            item.active ? "bg-[#a855f7]/10 text-[#a855f7]" : "text-white/40 hover:text-white hover:bg-white/5"
                         )}
                     >
-                        <item.icon size={20} className={cn("shrink-0", item.active && "text-neon-primary")} />
+                        <item.icon size={20} className={cn("shrink-0", item.active && "text-[#a855f7] drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]")} />
                         {!isCollapsed && (
                             <span className="text-sm font-medium tracking-tight whitespace-nowrap">{item.label}</span>
                         )}
                         {item.active && (
-                            <motion.div layoutId="active-pill" className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
+                            <motion.div layoutId="active-pill" className="absolute left-0 w-1 h-6 bg-[#a855f7] rounded-r-full shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
                         )}
                         {isCollapsed && (
-                            <div className="absolute left-16 bg-primary text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity font-bold uppercase tracking-widest">
+                            <div className="absolute left-16 bg-[#a855f7] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity font-bold uppercase tracking-widest z-50 shadow-lg">
                                 {item.label}
                             </div>
                         )}
