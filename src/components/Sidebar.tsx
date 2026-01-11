@@ -1,10 +1,16 @@
 "use client";
 
-import { Calendar, MessageSquare, FileText, Bell, LogOut, Users, CheckCircle2, LayoutDashboard, Database, Cpu } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+    Calendar, MessageSquare, Bell, LogOut, Users,
+    ChevronLeft, ChevronRight, LayoutDashboard, Settings,
+    Activity, Cpu, FolderOpen
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { MiniNeuralSphere } from "./NeuralSphere";
 
 interface SidebarProps {
@@ -12,7 +18,6 @@ interface SidebarProps {
     showCalendar?: boolean;
     onToggleAIChat?: () => void;
     showAIChat?: boolean;
-    onToggleDocImport?: () => void;
     onToggleNotifications?: () => void;
     showNotifications?: boolean;
     onActivateAI?: () => void;
@@ -23,84 +28,53 @@ export default function Sidebar({
     showCalendar,
     onToggleAIChat,
     showAIChat,
-    onToggleDocImport,
     onToggleNotifications,
     showNotifications,
     onActivateAI
 }: SidebarProps) {
     const pathname = usePathname();
     const supabase = createClient();
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = "/";
     };
 
-    return (
-        <>
-            {/* Desktop Side Bar (Left) */}
-            <aside className="hidden md:flex fixed top-0 left-0 bottom-0 w-24 border-r border-white/5 flex-col items-center py-8 gap-8 bg-[#020203]/80 backdrop-blur-3xl z-[60]">
-                <Link href="/" className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.5)] transition-transform hover:scale-110 active:scale-95">
-                    <CheckCircle2 className="w-7 h-7 text-white" strokeWidth={2.5} />
-                </Link>
+    const navItems = [
+        { icon: LayoutDashboard, label: "Dashboard", href: "/", active: pathname === "/" && !showCalendar },
+        { icon: Calendar, label: "Planning", onClick: onToggleCalendar, active: showCalendar },
+        { icon: Users, label: "Équipes", href: "/teams", active: pathname === "/teams" },
+        { icon: MessageSquare, label: "AI Chat", onClick: onToggleAIChat, active: showAIChat },
+        { icon: Bell, label: "Alertes", onClick: onToggleNotifications, active: showNotifications },
+    ];
 
-                <nav className="flex flex-col gap-6 flex-1 justify-center w-full items-center">
-                    <button
-                        onClick={onToggleCalendar}
-                        className={`p-4 rounded-2xl transition-all ${showCalendar ? 'bg-primary text-white shadow-[0_0_20px_rgba(59,130,246,0.4)]' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                    >
-                        <Calendar className="w-6 h-6" />
+    if (isMobile) {
+        return (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md h-20 glass-panel rounded-[24px] flex items-center justify-around px-2 z-[100] border-white/10 shadow-2xl">
+                {navItems.slice(0, 2).map((item, i) => (
+                    <button key={i} onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
+                        className={cn("flex flex-col items-center gap-1 transition-colors", item.active ? "text-primary" : "text-white/30")}>
+                        <item.icon className="w-5 h-5" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">{item.label}</span>
                     </button>
+                ))}
 
-                    <Link href="/teams" className={`p-4 rounded-2xl transition-all ${pathname === '/teams' ? 'bg-primary text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
-                        <Users className="w-6 h-6" />
-                    </Link>
-
-                    <button
-                        onClick={onToggleAIChat}
-                        className={`p-4 rounded-2xl transition-all ${showAIChat ? 'bg-primary text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                    >
-                        <MessageSquare className="w-6 h-6" />
-                    </button>
-
-                    <button
-                        onClick={onToggleNotifications}
-                        className={`p-4 rounded-2xl transition-all ${showNotifications ? 'bg-primary text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
-                    >
-                        <Bell className="w-6 h-6" />
-                    </button>
-                </nav>
-
-                <button
-                    onClick={handleLogout}
-                    className="p-4 text-white/20 hover:text-red-500 transition-colors mt-auto"
-                >
-                    <LogOut className="w-6 h-6" />
-                </button>
-            </aside>
-
-            {/* Mobile Bottom Navigation (Pill Style) */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md h-20 glass-morphism border-white/10 flex items-center justify-around px-4 z-[100] md:hidden">
-                <button
-                    onClick={() => pathname !== "/" ? window.location.href = "/" : onToggleCalendar?.()}
-                    className={`flex flex-col items-center gap-1 ${pathname === "/" && !showCalendar ? "text-primary" : "text-white/40"}`}
-                >
-                    <Database className="w-5 h-5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Flux</span>
-                </button>
-
-                <Link href="/teams" className={`flex flex-col items-center gap-1 ${pathname === "/teams" ? "text-primary" : "text-white/40"}`}>
-                    <Users className="w-5 h-5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Équipes</span>
-                </Link>
-
-                {/* Central AI Button */}
+                {/* Central AI Trigger */}
                 <div className="relative -top-10">
                     <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={onActivateAI}
-                        className="w-16 h-16 bg-[#020203]/80 backdrop-blur-md border-2 border-primary/20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.3)] relative z-10 overflow-hidden"
+                        className="w-16 h-16 bg-[#020203] border border-primary/20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(83,109,254,0.4)] relative z-10 overflow-hidden"
                     >
                         <div className="w-12 h-12">
                             <MiniNeuralSphere active={showAIChat} />
@@ -109,22 +83,91 @@ export default function Sidebar({
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-primary/20 rounded-full blur-2xl animate-pulse" />
                 </div>
 
-                <button
-                    onClick={onToggleCalendar}
-                    className={`flex flex-col items-center gap-1 ${showCalendar ? "text-primary" : "text-white/40"}`}
-                >
-                    <Calendar className="w-5 h-5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Tâches</span>
-                </button>
+                {navItems.slice(2, 4).map((item, i) => (
+                    <button key={i} onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
+                        className={cn("flex flex-col items-center gap-1 transition-colors", item.active ? "text-primary" : "text-white/30")}>
+                        <item.icon className="w-5 h-5" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">{item.label}</span>
+                    </button>
+                ))}
+            </div>
+        );
+    }
 
+    return (
+        <motion.aside
+            initial={false}
+            animate={{ width: isCollapsed ? 84 : 260 }}
+            className="fixed top-0 left-0 bottom-0 glass-panel border-r border-white/5 flex flex-col z-[60] bg-[#030303]/40"
+        >
+            {/* Logo Area */}
+            <div className="p-6 mb-8 flex items-center justify-between overflow-hidden">
+                <AnimatePresence mode="wait">
+                    {!isCollapsed && (
+                        <motion.div
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="flex items-center gap-3"
+                        >
+                            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(83,109,254,0.5)]">
+                                <Cpu className="w-5 h-5 text-white" />
+                            </div>
+                            <span className="font-outfit font-black uppercase tracking-widest text-sm">Track Habbit</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 <button
-                    onClick={onToggleAIChat}
-                    className={`flex flex-col items-center gap-1 ${showAIChat ? "text-primary" : "text-white/40"}`}
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors"
                 >
-                    <Cpu className="w-5 h-5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">IA</span>
+                    {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
             </div>
-        </>
+
+            {/* Nav Items */}
+            <nav className="flex-1 px-4 space-y-2">
+                <div className="section-label px-2 mb-4">
+                    {!isCollapsed ? "Menu Principal" : "..."}
+                </div>
+                {navItems.map((item, i) => (
+                    <button
+                        key={i}
+                        onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
+                        className={cn(
+                            "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all relative group",
+                            item.active ? "bg-primary/10 text-primary" : "text-white/40 hover:text-white hover:bg-white/5"
+                        )}
+                    >
+                        <item.icon size={20} className={cn("shrink-0", item.active && "text-neon-primary")} />
+                        {!isCollapsed && (
+                            <span className="text-sm font-medium tracking-tight whitespace-nowrap">{item.label}</span>
+                        )}
+                        {item.active && (
+                            <motion.div layoutId="active-pill" className="absolute left-0 w-1 h-6 bg-primary rounded-r-full" />
+                        )}
+                        {isCollapsed && (
+                            <div className="absolute left-16 bg-primary text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity font-bold uppercase tracking-widest">
+                                {item.label}
+                            </div>
+                        )}
+                    </button>
+                ))}
+            </nav>
+
+            {/* Bottom Section */}
+            <div className="p-4 mt-auto border-t border-white/5">
+                <button
+                    onClick={handleLogout}
+                    className={cn(
+                        "w-full flex items-center gap-4 px-3 py-3 rounded-xl text-white/20 hover:text-red-500 hover:bg-red-500/5 transition-all group",
+                        isCollapsed && "justify-center"
+                    )}
+                >
+                    <LogOut size={20} />
+                    {!isCollapsed && <span className="text-sm font-medium">Déconnexion</span>}
+                </button>
+            </div>
+        </motion.aside>
     );
 }
