@@ -157,7 +157,10 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
 
         const recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
-        recognition.continuous = true;
+
+        // Android Chrome stability: continuous = false is often more reliable
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        recognition.continuous = !isMobile;
         recognition.interimResults = true;
 
         recognition.onstart = () => {
@@ -195,10 +198,12 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         recognition.onerror = (event: any) => {
             console.error("❌ Recognition error:", event.error);
             if (event.error === 'no-speech' && isActiveRef.current && statusRef.current === "listening") {
+                // On mobile, silence is common, restart gently
                 try { recognition.stop(); } catch (e) { }
-                setTimeout(() => {
-                    if (isActiveRef.current && statusRef.current === "listening") try { recognition.start(); } catch (e) { }
-                }, 100);
+            }
+            if (event.error === 'not-allowed') {
+                setDebugInfo("Micro bloqué");
+                stopSession();
             }
         };
 
@@ -206,8 +211,10 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             if (isActiveRef.current && statusRef.current === "listening") {
                 console.log("🔄 Recognition ended, restarting...");
                 setTimeout(() => {
-                    if (isActiveRef.current && statusRef.current === "listening") try { recognition.start(); } catch (e) { }
-                }, 100);
+                    if (isActiveRef.current && statusRef.current === "listening") {
+                        try { recognition.start(); } catch (e) { }
+                    }
+                }, 400); // Longer delay for mobile stability
             }
         };
 
@@ -219,18 +226,13 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         setStatus("processing");
         setDebugInfo("Démarrage...");
 
-        // Débloquer l'audio (pour iOS et Android)
+        // Débloquer l'audio
         const unlockUtterance = new SpeechSynthesisUtterance('');
         unlockUtterance.volume = 0;
         window.speechSynthesis.speak(unlockUtterance);
 
-        // Sur mobile (Android), demander la permission explicitement 
-        // permet de "débloquer" le micro de manière stable avant que SpeechRecognition ne le prenne.
         try {
-            console.log("Requesting mic permission...");
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-            // On lance la reconnaissance
+            // On lance d'abord la reco seule SANS getUserMedia pour éviter les conflits
             recognitionRef.current = initRecognition();
             if (recognitionRef.current) {
                 recognitionRef.current.start();
@@ -239,13 +241,16 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
                 throw new Error("SpeechRecognition not supported");
             }
 
-            // Visualiseur optionnel (on attend que la reco soit bien lancée)
+            // Tentative de visualiseur en parallèle après un délai
             setTimeout(async () => {
+                if (!isActiveRef.current) return;
                 try {
+                    // On ne demande le stream QUE pour la visualisation
+                    // Si ça échoue, ce n'est pas grave, la reco tournera sans la "vague"
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+                    if (!stream) return;
+
                     audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-                    if (audioContextRef.current.state === 'suspended') {
-                        await audioContextRef.current.resume();
-                    }
                     const source = audioContextRef.current.createMediaStreamSource(stream);
                     analyserRef.current = audioContextRef.current.createAnalyser();
                     analyserRef.current.fftSize = 256;
@@ -261,15 +266,13 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
                     };
                     updateVolume();
                 } catch (vizErr) {
-                    console.warn("Visualizer failed (but STT might work):", vizErr);
+                    console.warn("Visualizer failed:", vizErr);
                 }
-            }, 500);
+            }, 1000);
 
         } catch (e: any) {
             console.error("Start session failed:", e);
-            setDebugInfo("Erreur Micro");
-            setStatus("error");
-            setTimeout(stopSession, 3000);
+            setStatus("listening");
         }
     }
 
