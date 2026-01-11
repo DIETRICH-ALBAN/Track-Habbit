@@ -1,326 +1,171 @@
-/* src/app/globals.css - Bogdan Falin Inspired Theme */
+/* src/app/globals.css - SaaS Premium 2024 inspired by Copilot visual (Pro User Request) */
 @import "tailwindcss";
 
 :root {
-  /* === BOGDAN FALIN INSPIRED COLOR PALETTE === */
+  /* === PALETTE PRINCIPALE === */
 
-  /* Background Gradients */
-  --bg-primary: #030303;
-  --bg-secondary: #080810;
-  --bg-gradient: linear-gradient(135deg, #030303 0%, #0a0a12 50%, #030303 100%);
+  /* Background: Noir profond avec gradient centré */
+  --bg-primary: #0a0a0a;
 
-  /* Neon Accent Colors */
-  --accent-cyan: #00d4ff;
-  --accent-purple: #a855f7;
-  --accent-magenta: #d946ef;
-  --accent-blue: #3b82f6;
+  /* Primary Actions: Bleu Electrique à Violet */
+  --action-primary: #4f46e5;
+  --action-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
 
-  /* Glow Intensities */
-  --glow-cyan: 0 0 30px rgba(0, 212, 255, 0.4);
-  --glow-purple: 0 0 30px rgba(168, 85, 247, 0.4);
-  --glow-magenta: 0 0 30px rgba(217, 70, 239, 0.4);
+  /* Accents Multicolores (Gradients) */
+  --gradient-glow: conic-gradient(from 180deg at 50% 50%, #4f46e5 0deg, #c026d3 120deg, #f59e0b 240deg, #4f46e5 360deg);
 
-  /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-muted: rgba(255, 255, 255, 0.3);
+  /* Typography */
+  --text-title: #ffffff;
+  --text-body: #94a3b8;
 
-  /* Cards (Glassmorphism) */
-  --card-bg: rgba(255, 255, 255, 0.02);
-  --card-border: rgba(255, 255, 255, 0.06);
-  --card-border-hover: rgba(168, 85, 247, 0.3);
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 20px;
 
   /* Layout */
-  --sidebar-width: 260px;
-  --sidebar-collapsed: 80px;
-  --border-radius: 20px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
 }
 
-/* === BASE STYLES === */
+/* === BASE & TYPOGRAPHY === */
 @layer base {
   body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+    background-color: var(--bg-primary);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    /* Gradient de fond global subtil */
+    background-image:
+      radial-gradient(circle at 50% 0%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 100% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
   }
 
   ::selection {
-    background-color: rgba(168, 85, 247, 0.4);
-    color: #ffffff;
+    background: rgba(79, 70, 229, 0.3);
+    color: white;
   }
 }
 
-/* === AMBIENT BACKGROUND EFFECTS === */
+/* === AMBIENT LIGHTING EFFECTS === */
 
-/* Mesh Gradient Orbs */
-.ambient-glow {
+/* Spot de lumière central (Violet/Bleu) */
+.ambient-spotlight {
   position: fixed;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.ambient-glow::before {
-  content: '';
-  position: fixed;
-  top: -20%;
-  right: -10%;
-  width: 600px;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
   height: 600px;
-  background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
-  filter: blur(80px);
-  animation: float-slow 20s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, transparent 70%);
+  filter: blur(100px);
+  z-index: 0;
+  pointer-events: none;
+  animation: pulse-slow 8s ease-in-out infinite alternate;
 }
 
-.ambient-glow::after {
-  content: '';
-  position: fixed;
-  bottom: -20%;
-  left: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(0, 212, 255, 0.12) 0%, transparent 70%);
-  filter: blur(80px);
-  animation: float-slow 25s ease-in-out infinite reverse;
-}
+@keyframes pulse-slow {
+  0% {
+    opacity: 0.6;
+    transform: translateX(-50%) scale(1);
+  }
 
-@keyframes float-slow {
-
-  0%,
   100% {
-    transform: translateY(0) translateX(0);
-  }
-
-  50% {
-    transform: translateY(-30px) translateX(20px);
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1);
   }
 }
 
-/* Subtle Noise Texture */
-.film-grain {
+/* Vignette Orangé/Doré sur les bords */
+.edge-vignette {
   position: fixed;
   inset: 0;
+  z-index: 10;
   pointer-events: none;
-  z-index: 1000;
-  opacity: 0.025;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background: radial-gradient(circle at 90% 10%, rgba(245, 158, 11, 0.05), transparent 40%),
+    radial-gradient(circle at 10% 90%, rgba(192, 38, 211, 0.05), transparent 40%);
 }
 
-/* Vignette */
-.vignette {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 999;
-  background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
-}
-
-/* === GLASSMORPHISM CARDS === */
+/* === GLASSMORPHISM & CARDS === */
 .glass-panel {
-  background: var(--card-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--card-border);
-  border-radius: var(--border-radius);
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3);
+}
+
+/* === BUTTONS (Style Bleu Électrique) === */
+.btn-primary-glow {
+  background: var(--action-primary);
+  background-image: linear-gradient(to right, #4f46e5, #7c3aed);
+  color: white;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  /* Pill shape */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
 }
 
-.glass-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
-  pointer-events: none;
+.btn-primary-glow:hover {
+  box-shadow: 0 0 30px rgba(79, 70, 229, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
 }
 
-.glass-panel:hover {
-  border-color: var(--card-border-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--glow-purple);
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
 }
 
-/* === NEON TEXT EFFECTS === */
-.text-neon {
-  text-shadow:
-    0 0 10px currentColor,
-    0 0 20px currentColor,
-    0 0 40px currentColor;
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.text-gradient {
-  background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-purple) 50%, var(--accent-magenta) 100%);
+/* === TEXT STYLES === */
+.title-gradient {
+  background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
   -webkit-background-clip: text;
   background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: transparent;
+  width: fit-content;
 }
 
-/* === TYPOGRAPHY HIERARCHY === */
-.display-title {
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  line-height: 0.95;
-}
-
-.section-label {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4em;
-  color: var(--text-muted);
-  margin-bottom: 1rem;
-}
-
-.body-text {
-  font-weight: 400;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-
-/* === ANIMATED BORDER GLOW === */
-.border-glow {
-  position: relative;
-}
-
-.border-glow::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple), var(--accent-magenta), var(--accent-cyan));
-  background-size: 300% 300%;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  animation: gradient-flow 4s ease infinite;
-}
-
-.border-glow:hover::after {
-  opacity: 1;
-}
-
-@keyframes gradient-flow {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* === BUTTONS === */
-.btn-neon {
-  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-magenta) 100%);
-  color: white;
-  font-weight: 700;
+.section-tag {
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  padding: 1rem 2rem;
-  border-radius: 12px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: var(--glow-purple);
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+  display: block;
 }
 
-.btn-neon:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 0 50px rgba(168, 85, 247, 0.6);
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--card-border);
-  color: var(--text-secondary);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-ghost:hover {
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
-  background: rgba(168, 85, 247, 0.05);
-}
-
-/* === SCROLLBAR === */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(168, 85, 247, 0.3);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 85, 247, 0.6);
-}
-
-/* === ANIMATIONS === */
-.animate-enter {
-  animation: enter 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-}
-
-@keyframes enter {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(168, 85, 247, 0.6);
-  }
-}
-
-/* === UTILITY CLASSES === */
+/* === UTILITIES === */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -328,21 +173,4 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Legacy compatibility */
-.text-primary {
-  color: var(--accent-purple);
-}
-
-.text-secondary {
-  color: var(--accent-magenta);
-}
-
-.text-accent {
-  color: var(--accent-cyan);
-}
-
-.bg-primary {
-  background-color: var(--accent-purple);
 }

@@ -103,9 +103,8 @@ export default function Home() {
     <div className="min-h-screen bg-[#030303] text-white selection:bg-primary/30">
 
       {/* Background Ambience */}
-      <div className="film-grain" />
-      <div className="vignette" />
-      <div className="ambient-glow" />
+      <div className="ambient-spotlight" />
+      <div className="edge-vignette" />
 
       {/* Main Layout Container */}
       <div className="flex flex-col md:flex-row h-screen overflow-hidden">
@@ -127,8 +126,8 @@ export default function Home() {
           {/* Top Header - Glass Navbar */}
           <header className="h-20 flex items-center justify-between px-8 border-b border-white/5 bg-[#030303]/40 backdrop-blur-xl z-30 shrink-0">
             <div className="flex flex-col">
-              <h1 className="text-xl font-black display-title tracking-tight text-gradient">Bonjour, {user.email?.split('@')[0]}</h1>
-              <span className="section-label mb-0">
+              <h1 className="text-2xl font-bold title-gradient">Bonjour, {user.email?.split('@')[0]}</h1>
+              <span className="section-tag">
                 {format(currentTime, "EEEE dd MMMM", { locale: fr })}
               </span>
             </div>
