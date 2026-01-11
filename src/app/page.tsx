@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import {
   Plus, Clock, X, Bell, User, Cpu, Activity,
-  Filter, Sparkles, LayoutGrid, ListChecks
+  Filter, Sparkles, LayoutGrid, ListChecks, Users
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";

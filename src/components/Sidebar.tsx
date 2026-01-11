@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
     Calendar, MessageSquare, Bell, LogOut, Users,
     ChevronLeft, ChevronRight, LayoutDashboard, Settings,
-    Activity, Cpu, FolderOpen
+    Activity, Cpu, FolderOpen, FileText
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -18,6 +18,7 @@ interface SidebarProps {
     showCalendar?: boolean;
     onToggleAIChat?: () => void;
     showAIChat?: boolean;
+    onToggleDocImport?: () => void;
     onToggleNotifications?: () => void;
     showNotifications?: boolean;
     onActivateAI?: () => void;
@@ -28,6 +29,7 @@ export default function Sidebar({
     showCalendar,
     onToggleAIChat,
     showAIChat,
+    onToggleDocImport,
     onToggleNotifications,
     showNotifications,
     onActivateAI
@@ -52,6 +54,7 @@ export default function Sidebar({
     const navItems = [
         { icon: LayoutDashboard, label: "Dashboard", href: "/", active: pathname === "/" && !showCalendar },
         { icon: Calendar, label: "Planning", onClick: onToggleCalendar, active: showCalendar },
+        { icon: FileText, label: "Import", onClick: onToggleDocImport, active: false },
         { icon: Users, label: "Équipes", href: "/teams", active: pathname === "/teams" },
         { icon: MessageSquare, label: "AI Chat", onClick: onToggleAIChat, active: showAIChat },
         { icon: Bell, label: "Alertes", onClick: onToggleNotifications, active: showNotifications },

@@ -28,8 +28,13 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
-    @apply antialiased selection:bg-primary/30 selection:text-white;
+    @apply antialiased;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+
+  ::selection {
+    background-color: rgba(83, 109, 254, 0.3);
+    color: #ffffff;
   }
 }
 
