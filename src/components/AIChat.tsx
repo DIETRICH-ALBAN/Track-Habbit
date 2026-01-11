@@ -20,9 +20,11 @@ interface Message {
 
 interface AIChatProps {
     onTaskCreated?: () => void;
+    initialMessage?: string;
+    onMessageProcessed?: () => void;
 }
 
-export default function AIChat({ onTaskCreated }: AIChatProps) {
+export default function AIChat({ onTaskCreated, initialMessage, onMessageProcessed }: AIChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -56,18 +58,23 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const sendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || loading) return;
+    // Gérer le message initial (ex: import doc)
+    useEffect(() => {
+        if (initialMessage && !loading && historyLoaded) {
+            handleSendMessage(initialMessage);
+            if (onMessageProcessed) onMessageProcessed();
+        }
+    }, [initialMessage, loading, historyLoaded, onMessageProcessed]);
 
+    const handleSendMessage = async (text: string) => {
         const userMessage: Message = {
             id: Date.now().toString(),
             role: "user",
-            content: input.trim()
+            content: text.trim()
         };
 
         setMessages(prev => [...prev, userMessage]);
-        setInput("");
+        if (input === text) setInput("");
         setLoading(true);
 
         try {
@@ -111,12 +118,19 @@ export default function AIChat({ onTaskCreated }: AIChatProps) {
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: "assistant",
-                content: `Désolé, j'ai rencontré une erreur : ${error.message}. Veuillez vérifier votre connexion ou vous reconnecter.`
+                content: `Désolé, j'ai rencontré une erreur : ${error.message}.`
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
             setLoading(false);
         }
+    };
+
+    const sendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!input.trim() || loading) return;
+        handleSendMessage(input);
+        setInput("");
     };
 
     // Nettoyer le contenu pour enlever tous les blocs JSON d'action

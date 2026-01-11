@@ -8,6 +8,7 @@ import AuthModal from "@/components/AuthModal";
 import TaskForm from "@/components/TaskForm";
 import AIChat from "@/components/AIChat";
 import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
+import DocumentImport from "@/components/DocumentImport";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -22,7 +23,9 @@ export default function Home() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showDocImport, setShowDocImport] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [aiInitialMessage, setAiInitialMessage] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -163,6 +166,17 @@ export default function Home() {
         />
       )}
 
+      {/* Document Import Modal */}
+      {showDocImport && (
+        <DocumentImport
+          onClose={() => setShowDocImport(false)}
+          onTextExtracted={(text, filename) => {
+            setShowAIChat(true);
+            setAiInitialMessage(`Analyse ce document (${filename}) et suggère-moi les tâches à créer :\n\n${text.slice(0, 2000)}${text.length > 2000 ? '...' : ''}`);
+          }}
+        />
+      )}
+
       {/* Sidebar - Navigation (Desktop: Left, Mobile: Bottom Tab Bar) */}
       <aside className="fixed bottom-0 left-0 right-0 md:relative md:w-20 border-t md:border-t-0 md:border-r border-white/10 flex flex-row md:flex-col items-center py-4 md:py-8 px-6 md:px-0 gap-8 bg-[#050505]/80 backdrop-blur-xl z-[60]">
         <div className="hidden md:flex w-10 h-10 bg-primary rounded-xl items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)]">
@@ -181,7 +195,10 @@ export default function Home() {
           >
             <MessageSquare className="w-6 h-6 mx-auto" />
           </button>
-          <button className="md:p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hidden md:block">
+          <button
+            onClick={() => setShowDocImport(true)}
+            className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-primary"
+          >
             <FileText className="w-6 h-6 mx-auto" />
           </button>
           <button
@@ -416,7 +433,11 @@ export default function Home() {
           onClick={() => setShowAIChat(false)}
         />
         <div className="relative w-full h-full flex flex-col p-4 md:p-0">
-          <AIChat onTaskCreated={fetchTasks} />
+          <AIChat
+            onTaskCreated={fetchTasks}
+            initialMessage={aiInitialMessage || undefined}
+            onMessageProcessed={() => setAiInitialMessage(null)}
+          />
           {/* Mobile Close Button */}
           <button
             onClick={() => setShowAIChat(false)}
