@@ -1,7 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as xlsx from 'xlsx';
-// @ts-ignore
-const pdf = require('pdf-parse');
+
+// Helper to extract text from PDF buffer using pdfjs-dist (Legacy build for Node)
+async function extractPdfText(buffer: Buffer): Promise<string> {
+    try {
+        // Dynamic import to avoid build issues
+        // @ts-ignore
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.js');
+
+        // Disable worker for Node environment
+        pdfjs.GlobalWorkerOptions.workerSrc = '';
+
+        const data = new Uint8Array(buffer);
+        const loadingTask = pdfjs.getDocument({
+            data,
+            useSystemFonts: true,
+            disableFontFace: true,
+        });
+
+        const doc = await loadingTask.promise;
+        let fullText = '';
+
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+                .map((item: any) => item.str)
+                .join(' ');
+
+            fullText += pageText + '\n';
+        }
+
+        return fullText;
+    } catch (error) {
+        console.error("PDF Extraction Error:", error);
+        throw new Error("Impossible de lire le fichier PDF.");
+    }
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -16,8 +51,7 @@ export async function POST(request: NextRequest) {
         let extractedText = '';
 
         if (file.type === 'application/pdf') {
-            const data = await pdf(buffer);
-            extractedText = data.text;
+            extractedText = await extractPdfText(buffer);
         } else if (
             file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
             file.type === 'application/vnd.ms-excel'

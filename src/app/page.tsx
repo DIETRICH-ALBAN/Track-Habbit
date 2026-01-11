@@ -9,6 +9,7 @@ import TaskForm from "@/components/TaskForm";
 import AIChat from "@/components/AIChat";
 import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
 import DocumentImport from "@/components/DocumentImport";
+import CalendarView from "@/components/CalendarView";
 import { Task, TaskStatus, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
 import { format, isToday, isTomorrow, parseISO } from "date-fns";
@@ -24,6 +25,7 @@ export default function Home() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showDocImport, setShowDocImport] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [aiInitialMessage, setAiInitialMessage] = useState<string | null>(null);
 
@@ -183,7 +185,10 @@ export default function Home() {
           <CheckCircle2 className="w-6 h-6 text-white" />
         </div>
         <nav className="flex flex-row md:flex-col gap-6 md:gap-8 flex-1 justify-around md:justify-center w-full">
-          <button className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-primary border border-primary/20">
+          <button
+            onClick={() => setShowCalendar(!showCalendar)}
+            className={`p-3 rounded-xl transition-all border ${showCalendar ? 'bg-white/10 text-primary border-primary/20' : 'bg-white/5 text-white/60 border-transparent hover:text-primary'}`}
+          >
             <Calendar className="w-6 h-6 mx-auto" strokeWidth={2.5} />
           </button>
           <a href="/teams" className="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-primary">
@@ -210,31 +215,35 @@ export default function Home() {
         </nav>
       </aside>
 
-      {/* Main Content - Tasks List */}
+      {/* Main Content - Tasks List or Calendar */}
       <main className="flex-1 p-4 md:p-12 overflow-y-auto relative">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto h-full flex flex-col">
           <header className="mb-8 md:mb-12 flex justify-between items-start md:items-end">
             <div>
-              <h1 className="text-3xl md:text-5xl font-bold font-outfit gradient-text mb-2 tracking-tight">Bonjour !</h1>
+              <h1 className="text-3xl md:text-5xl font-bold font-outfit gradient-text mb-2 tracking-tight">
+                {showCalendar ? "Mon Agenda" : "Bonjour !"}
+              </h1>
               <p className="text-white/40 font-medium text-sm md:text-base">
-                {todoTasks.length === 0
-                  ? "Vous n'avez aucune tâche en cours. 🎉"
-                  : `Vous avez ${todoTasks.length} tâche${todoTasks.length > 1 ? 's' : ''} en cours.`}
+                {showCalendar
+                  ? "Visualisez vos tâches dans le temps."
+                  : (todoTasks.length === 0 ? "Vous n'avez aucune tâche en cours. 🎉" : `Vous avez ${todoTasks.length} tâche${todoTasks.length > 1 ? 's' : ''} en cours.`)}
               </p>
             </div>
 
             {/* Desktop New Task Button */}
-            <button
-              onClick={() => setShowTaskForm(true)}
-              className="hidden md:flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
-            >
-              <Plus className="w-5 h-5" strokeWidth={3} />
-              <span>Nouvelle Tâche</span>
-            </button>
+            {!showCalendar && (
+              <button
+                onClick={() => setShowTaskForm(true)}
+                className="hidden md:flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
+              >
+                <Plus className="w-5 h-5" strokeWidth={3} />
+                <span>Nouvelle Tâche</span>
+              </button>
+            )}
           </header>
 
           {/* Floating Action Button for Mobile */}
-          {!showAIChat && (
+          {!showAIChat && !showCalendar && (
             <button
               onClick={() => setShowTaskForm(true)}
               className="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(59,130,246,0.5)] z-50 active:scale-90 transition-transform"
@@ -244,7 +253,7 @@ export default function Home() {
           )}
 
           {/* Team Filter Bar */}
-          <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide flex-shrink-0">
             <button
               onClick={() => setSelectedTeamId(null)}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border whitespace-nowrap ${selectedTeamId === null
@@ -278,146 +287,154 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Todo Tasks */}
-          <section className="space-y-4 mb-8">
-            <AnimatePresence>
-              {todoTasks.map((task) => (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  className="glass-morphism p-5 flex items-center gap-6 group hover:border-primary/30 transition-all"
-                >
-                  <button
-                    onClick={() => toggleTaskStatus(task)}
-                    className="text-white/20 hover:text-primary transition-colors"
-                  >
-                    <Circle className="w-7 h-7" strokeWidth={2.5} />
-                  </button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{task.title}</h3>
-                      {(task as any).team?.name && (
-                        <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {(task as any).team.name}
-                        </span>
-                      )}
-                    </div>
-                    {task.description && (
-                      <p className="text-sm text-white/40 mt-1 line-clamp-1">{task.description}</p>
-                    )}
-                    <div className="flex items-center gap-4 mt-2 text-xs text-white/30 font-semibold uppercase tracking-widest">
-                      {task.due_date && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" /> {formatDueDate(task.due_date)}
-                        </span>
-                      )}
-                      <span className={`px-2 py-0.5 rounded-md ${getPriorityLabel(task.priority).color}`}>
-                        {getPriorityLabel(task.priority).label}
-                      </span>
-                      {task.team_id && task.user_id !== user?.id && (
-                        <span className="text-[10px] text-white/20">
-                          Par {task.user_id.slice(0, 5)}...
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="relative">
-                    <button
-                      onClick={() => setActiveMenu(activeMenu === task.id ? null : task.id)}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          {showCalendar ? (
+            <div className="flex-1 min-h-0">
+              <CalendarView tasks={tasks} onTaskClick={toggleTaskStatus} />
+            </div>
+          ) : (
+            <>
+              {/* Todo Tasks */}
+              <section className="space-y-4 mb-8">
+                <AnimatePresence>
+                  {todoTasks.map((task) => (
+                    <motion.div
+                      key={task.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -100 }}
+                      className="glass-morphism p-5 flex items-center gap-6 group hover:border-primary/30 transition-all"
                     >
-                      <MoreVertical className="w-5 h-5 text-white/40" />
-                    </button>
-                    {activeMenu === task.id && (
-                      <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl p-2 min-w-[160px] z-50 shadow-xl">
-                        <div className="text-[10px] uppercase tracking-widest text-white/30 px-3 py-2">Priorité</div>
+                      <button
+                        onClick={() => toggleTaskStatus(task)}
+                        className="text-white/20 hover:text-primary transition-colors"
+                      >
+                        <Circle className="w-7 h-7" strokeWidth={2.5} />
+                      </button>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{task.title}</h3>
+                          {(task as any).team?.name && (
+                            <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold border border-primary/20 flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {(task as any).team.name}
+                            </span>
+                          )}
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-white/40 mt-1 line-clamp-1">{task.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-2 text-xs text-white/30 font-semibold uppercase tracking-widest">
+                          {task.due_date && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" /> {formatDueDate(task.due_date)}
+                            </span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded-md ${getPriorityLabel(task.priority).color}`}>
+                            {getPriorityLabel(task.priority).label}
+                          </span>
+                          {task.team_id && task.user_id !== user?.id && (
+                            <span className="text-[10px] text-white/20">
+                              Par {task.user_id.slice(0, 5)}...
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="relative">
                         <button
-                          onClick={() => updateTaskPriority(task.id, 'high')}
-                          className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2"
+                          onClick={() => setActiveMenu(activeMenu === task.id ? null : task.id)}
+                          className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                         >
-                          <span className="w-2 h-2 bg-red-500 rounded-full" /> Haute
+                          <MoreVertical className="w-5 h-5 text-white/40" />
                         </button>
+                        {activeMenu === task.id && (
+                          <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl p-2 min-w-[160px] z-50 shadow-xl">
+                            <div className="text-[10px] uppercase tracking-widest text-white/30 px-3 py-2">Priorité</div>
+                            <button
+                              onClick={() => updateTaskPriority(task.id, 'high')}
+                              className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 bg-red-500 rounded-full" /> Haute
+                            </button>
+                            <button
+                              onClick={() => updateTaskPriority(task.id, 'medium')}
+                              className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 bg-yellow-500 rounded-full" /> Moyenne
+                            </button>
+                            <button
+                              onClick={() => updateTaskPriority(task.id, 'low')}
+                              className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2"
+                            >
+                              <span className="w-2 h-2 bg-green-500 rounded-full" /> Basse
+                            </button>
+                            <div className="border-t border-white/10 my-2" />
+                            <button
+                              onClick={() => deleteTask(task.id)}
+                              className="w-full text-left px-3 py-2 hover:bg-red-500/10 rounded-lg text-sm flex items-center gap-2 text-red-500"
+                            >
+                              <Trash2 className="w-4 h-4" /> Supprimer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </section>
+
+              {/* Done Tasks */}
+              {doneTasks.length > 0 && (
+                <section className="space-y-4">
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">
+                    Terminées ({doneTasks.length})
+                  </h2>
+                  <AnimatePresence>
+                    {doneTasks.map((task) => (
+                      <motion.div
+                        key={task.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -100 }}
+                        className="glass-morphism p-5 flex items-center gap-6 group opacity-50 hover:opacity-80 transition-all"
+                      >
                         <button
-                          onClick={() => updateTaskPriority(task.id, 'medium')}
-                          className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2"
+                          onClick={() => toggleTaskStatus(task)}
+                          className="text-primary transition-colors"
                         >
-                          <span className="w-2 h-2 bg-yellow-500 rounded-full" /> Moyenne
+                          <CheckCircle2 className="w-7 h-7" strokeWidth={2.5} />
                         </button>
-                        <button
-                          onClick={() => updateTaskPriority(task.id, 'low')}
-                          className="w-full text-left px-3 py-2 hover:bg-white/5 rounded-lg text-sm flex items-center gap-2"
-                        >
-                          <span className="w-2 h-2 bg-green-500 rounded-full" /> Basse
-                        </button>
-                        <div className="border-t border-white/10 my-2" />
+                        <div className="flex-1">
+                          <h3 className="text-lg font-bold line-through text-white/50">{task.title}</h3>
+                        </div>
                         <button
                           onClick={() => deleteTask(task.id)}
-                          className="w-full text-left px-3 py-2 hover:bg-red-500/10 rounded-lg text-sm flex items-center gap-2 text-red-500"
+                          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 text-red-500/60 hover:text-red-500"
                         >
-                          <Trash2 className="w-4 h-4" /> Supprimer
+                          <Trash2 className="w-5 h-5" />
                         </button>
-                      </div>
-                    )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </section>
+              )}
+
+              {/* Empty State */}
+              {tasks.length === 0 && (
+                <div className="text-center py-20">
+                  <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="w-10 h-10 text-white/20" />
                   </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </section>
-
-          {/* Done Tasks */}
-          {doneTasks.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">
-                Terminées ({doneTasks.length})
-              </h2>
-              <AnimatePresence>
-                {doneTasks.map((task) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -100 }}
-                    className="glass-morphism p-5 flex items-center gap-6 group opacity-50 hover:opacity-80 transition-all"
+                  <h3 className="text-xl font-bold mb-2">Aucune tâche</h3>
+                  <p className="text-white/40 mb-6">Commencez par créer votre première tâche !</p>
+                  <button
+                    onClick={() => setShowTaskForm(true)}
+                    className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all"
                   >
-                    <button
-                      onClick={() => toggleTaskStatus(task)}
-                      className="text-primary transition-colors"
-                    >
-                      <CheckCircle2 className="w-7 h-7" strokeWidth={2.5} />
-                    </button>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold line-through text-white/50">{task.title}</h3>
-                    </div>
-                    <button
-                      onClick={() => deleteTask(task.id)}
-                      className="p-2 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 text-red-500/60 hover:text-red-500"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </section>
-          )}
-
-          {/* Empty State */}
-          {tasks.length === 0 && (
-            <div className="text-center py-20">
-              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 className="w-10 h-10 text-white/20" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Aucune tâche</h3>
-              <p className="text-white/40 mb-6">Commencez par créer votre première tâche !</p>
-              <button
-                onClick={() => setShowTaskForm(true)}
-                className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all"
-              >
-                Créer une tâche
-              </button>
-            </div>
+                    Créer une tâche
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
@@ -432,7 +449,7 @@ export default function Home() {
           className="absolute inset-0 bg-black/60 backdrop-blur-sm md:hidden"
           onClick={() => setShowAIChat(false)}
         />
-        <div className="relative w-full h-full flex flex-col p-4 md:p-0">
+        <div className="relative w-full h-full flex flex-col p-4 md:p-0" >
           <AIChat
             onTaskCreated={fetchTasks}
             initialMessage={aiInitialMessage || undefined}
