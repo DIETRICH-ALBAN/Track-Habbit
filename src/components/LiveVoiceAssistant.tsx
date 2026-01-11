@@ -30,6 +30,7 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const statusRef = useRef(status);
     const isActiveRef = useRef(isActive);
+    const [shake, setShake] = useState(false);
 
     // Synchronize refs with state to avoid stale closures in events
     useEffect(() => { statusRef.current = status; }, [status]);
@@ -71,24 +72,45 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             return;
         }
 
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'fr-FR';
+        const doSpeak = () => {
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'fr-FR';
 
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('fr') && (v.name.includes('Google') || v.name.includes('Premium')));
-        if (preferredVoice) utterance.voice = preferredVoice;
+            const voices = window.speechSynthesis.getVoices();
+            console.log("Available voices:", voices.length);
 
-        utterance.rate = 1.05;
-        utterance.onstart = () => {
-            setStatus("speaking");
-            setDebugInfo("L'IA parle...");
+            // Priorité aux voix Google/Premium pour Android/Desktop
+            const preferredVoice = voices.find(v => v.lang.startsWith('fr') &&
+                (v.name.includes('Google') || v.name.includes('Premium') || v.name.includes('Microsoft') || v.name.includes('Thomas') || v.name.includes('Audrey')));
+
+            if (preferredVoice) utterance.voice = preferredVoice;
+
+            utterance.rate = 1.05;
+            utterance.onstart = () => {
+                setStatus("speaking");
+                setDebugInfo("L'IA parle...");
+            };
+            utterance.onend = () => {
+                setDebugInfo("Je vous écoute...");
+                restartListening();
+            };
+            utterance.onerror = (e) => {
+                console.error("TTS Error:", e);
+                restartListening();
+            };
+
+            window.speechSynthesis.speak(utterance);
         };
-        utterance.onend = () => {
-            setDebugInfo("Je vous écoute...");
-            restartListening();
-        };
 
-        window.speechSynthesis.speak(utterance);
+        // Sur mobile, les voix peuvent mettre du temps à charger
+        if (window.speechSynthesis.getVoices().length === 0) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                doSpeak();
+                window.speechSynthesis.onvoiceschanged = null;
+            };
+        } else {
+            doSpeak();
+        }
     }
 
     async function processText(text: string) {
@@ -139,19 +161,13 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
         recognition.interimResults = true;
 
         recognition.onstart = () => {
+            console.log("🎤 Recognition started");
             setStatus("listening");
             setDebugInfo("Je vous écoute...");
         };
 
         recognition.onresult = (event: any) => {
-            let fullTranscript = "";
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-                // On accumule pour l'affichage, mais on gère l'envoi séparément
-                if (event.results[i].isFinal) {
-                    // console.log("Final result:", event.results[i][0].transcript);
-                }
-            }
-
+            console.log("📨 Result received:", event.results);
             // Re-calcul du transcript complet pour l'UI
             let total = "";
             for (let i = 0; i < event.results.length; i++) {
@@ -161,19 +177,18 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
             if (total.trim()) {
                 setTranscript(total);
                 lastTranscriptRef.current = total;
-                console.log("🎤 Transcript:", total);
+                setDebugInfo("Je vous écoute...");
 
-                // Auto-submit logic
+                // Auto-submit logic - un peu plus long pour laisser respirer
                 if (autoSubmitTimeoutRef.current) clearTimeout(autoSubmitTimeoutRef.current);
                 autoSubmitTimeoutRef.current = setTimeout(() => {
                     const text = lastTranscriptRef.current.trim();
-                    console.log("⏲️ Timeout check:", { text, isActive: isActiveRef.current, status: statusRef.current });
                     if (text && isActiveRef.current && statusRef.current === "listening") {
                         console.log("🚀 Auto-submitting:", text);
                         if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
                         processText(text);
                     }
-                }, 1600);
+                }, 2000);
             }
         };
 
@@ -202,47 +217,78 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
     async function startSession() {
         setIsActive(true);
         setStatus("processing");
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance('')); // iOS unlock
+        setDebugInfo("Démarrage...");
 
+        // Débloquer l'audio (pour iOS et Android)
+        const unlockUtterance = new SpeechSynthesisUtterance('');
+        unlockUtterance.volume = 0;
+        window.speechSynthesis.speak(unlockUtterance);
+
+        // Sur mobile (Android), demander la permission explicitement 
+        // permet de "débloquer" le micro de manière stable avant que SpeechRecognition ne le prenne.
         try {
+            console.log("Requesting mic permission...");
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const source = audioContextRef.current.createMediaStreamSource(stream);
-            analyserRef.current = audioContextRef.current.createAnalyser();
-            analyserRef.current.fftSize = 256;
-            source.connect(analyserRef.current);
 
-            const updateVolume = () => {
-                if (!analyserRef.current) return;
-                const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-                analyserRef.current.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
-                setVolume(average / 128);
-                animationFrameRef.current = requestAnimationFrame(updateVolume);
-            };
-            updateVolume();
-        } catch (e) {
-            console.warn("Audio viz not available");
-        }
+            // On lance la reconnaissance
+            recognitionRef.current = initRecognition();
+            if (recognitionRef.current) {
+                recognitionRef.current.start();
+                console.log("Speech recognition started.");
+            } else {
+                throw new Error("SpeechRecognition not supported");
+            }
 
-        recognitionRef.current = initRecognition();
-        if (recognitionRef.current) {
-            try { recognitionRef.current.start(); } catch (e) { }
-        } else {
-            setStatus("listening");
+            // Visualiseur optionnel (on attend que la reco soit bien lancée)
+            setTimeout(async () => {
+                try {
+                    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+                    if (audioContextRef.current.state === 'suspended') {
+                        await audioContextRef.current.resume();
+                    }
+                    const source = audioContextRef.current.createMediaStreamSource(stream);
+                    analyserRef.current = audioContextRef.current.createAnalyser();
+                    analyserRef.current.fftSize = 256;
+                    source.connect(analyserRef.current);
+
+                    const updateVolume = () => {
+                        if (!analyserRef.current || !isActiveRef.current) return;
+                        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+                        analyserRef.current.getByteFrequencyData(dataArray);
+                        const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
+                        setVolume(average / 128);
+                        animationFrameRef.current = requestAnimationFrame(updateVolume);
+                    };
+                    updateVolume();
+                } catch (vizErr) {
+                    console.warn("Visualizer failed (but STT might work):", vizErr);
+                }
+            }, 500);
+
+        } catch (e: any) {
+            console.error("Start session failed:", e);
+            setDebugInfo("Erreur Micro");
+            setStatus("error");
+            setTimeout(stopSession, 3000);
         }
     }
 
     function handleSubmit(e?: React.MouseEvent) {
         e?.preventDefault();
-        e?.stopPropagation(); // Stop propagation to prevent form submission doubling
+        e?.stopPropagation();
         if (status !== "listening") return;
         if (autoSubmitTimeoutRef.current) clearTimeout(autoSubmitTimeoutRef.current);
 
         const text = lastTranscriptRef.current.trim();
         if (text) {
+            console.log("Submit text:", text);
             if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
             processText(text);
+        } else {
+            console.warn("Empty transcript on submit");
+            setShake(true);
+            setDebugInfo("Dites quelque chose...");
+            setTimeout(() => setShake(false), 500);
         }
     }
 
@@ -339,8 +385,10 @@ export default function LiveVoiceAssistant({ onTaskCreated }: LiveVoiceAssistant
                                     whileTap={{ scale: 0.9 }}
                                     onClick={handleSubmit}
                                     disabled={status !== "listening"}
+                                    animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+                                    transition={{ duration: 0.4 }}
                                     className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all relative z-[10000] cursor-pointer ${status === "listening"
-                                        ? "bg-red-500 hover:bg-red-600 border-4 border-white/20"
+                                        ? (lastTranscriptRef.current.trim() ? "bg-red-500 scale-110 shadow-[0_0_20px_rgba(239,68,68,0.5)]" : "bg-gray-600")
                                         : "bg-gray-700 opacity-50 cursor-not-allowed"
                                         }`}
                                 >
