@@ -24,7 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} ${outfit.variable} antialiased`}>
+      <body className={`${inter.variable} ${outfit.variable} antialiased relative`}>
+        <div className="film-grain" />
+        <div className="glow-vignette" />
         {children}
       </body>
     </html>

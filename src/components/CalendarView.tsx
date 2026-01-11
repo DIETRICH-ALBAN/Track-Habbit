@@ -10,6 +10,7 @@ import { Task } from "@/types/task";
 interface CalendarViewProps {
     tasks: Task[];
     onTaskClick: (task: Task) => void;
+    onClose?: () => void;
 }
 
 export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
@@ -141,8 +142,8 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
                                             </p>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${task.priority === 'high' ? 'bg-red-500/10 text-red-500' :
-                                                        task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
-                                                            'bg-green-500/10 text-green-500'
+                                                    task.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                                                        'bg-green-500/10 text-green-500'
                                                     }`}>
                                                     {task.priority === 'high' ? 'Haute' : task.priority === 'medium' ? 'Moyenne' : 'Basse'}
                                                 </span>
