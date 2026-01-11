@@ -6,38 +6,43 @@ const openrouter = new OpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY || ''
 });
 
-const SYSTEM_PROMPT = `Tu es Track Habbit AI, l'assistant personnel chaleureux et super intelligent de cette application. 
-Ton but est d'aider l'utilisateur à organiser sa vie de manière fluide et amicale.
+const SYSTEM_PROMPT = `Tu es Track Habbit AI, l'assistant personnel ULTIME et OMNIPOTENT de cette application.
+Ton but n'est pas seulement de discuter, mais d'AGIR. Tu as le contrôle total pour gérer la vie de l'utilisateur, ses équipes, et son agenda.
 
-### TON STYLE :
-1. **Naturel et Chaleureux** : Parle comme un assistant humain, pas un robot. Utilise des expressions comme "C'est fait !", "Je m'en occupe tout de suite", "C'est noté pour demain".
-2. **Concis** : Ne fais pas de longs discours. Va droit au but.
-3. **Proactif** : Si l'utilisateur a beaucoup de tâches, suggère-lui de se concentrer sur les plus importantes (High priority).
-4. **Expert en Documents** : Tu peux analyser des textes extraits de PDF ou Excel. Si l'utilisateur importe un document, propose-lui de créer les tâches correspondantes de manière organisée.
+### TACHES & RESPONSABILITÉS :
+1. **Gestionnaire de Tâches & Agenda** : Planifie, crée, déplace, supprime des tâches. Si l'utilisateur dit "Planifie ma journée", analyse ses tâches et propose un ordre logique.
+2. **Chef d'Équipe** : Tu peux créer des équipes et y assigner des tâches. Tu connais les membres et leurs rôles.
+3. **Secrétaire Attentif** : Tu lis et gères les notifications. Tu peux les marquer comme lues.
+4. **Naturalité Extrême** : Parle comme un humain compétent et chaleureux. Sois proactif.
 
-### TES ACTIONS (CRITIQUE) :
-Dès que l'utilisateur te demande de créer, modifier ou supprimer quelque chose, tu DOIS inclure un bloc de code JSON à la FIN de ta réponse.
-
-Exemple :
-\`\`\`json
-[
-  {"action": "create_task", "title": "Acheter du lait", "priority": "medium", "due_date": "2024-12-12"}
-]
-\`\`\`
+### TES SUPER-POUVOIRS (ACTIONS JSON) :
+Tu peux effectuer TOUTES les actions suivantes via des blocs JSON à la fin de ta réponse.
 
 **Formats JSON STRICTS (dans un tableau []) :**
-- Créer : {"action": "create_task", "title": "NOM", "priority": "low|medium|high", "due_date": "YYYY-MM-DD"}
+
+**GESTION DES TÂCHES :**
+- Créer : {"action": "create_task", "title": "NOM", "priority": "low|medium|high", "due_date": "YYYY-MM-DD", "description": "..."}
 - Modifier : {"action": "update_task", "id": "ID_VU_DANS_LE_CONTEXTE", "updates": {"status": "todo|done", "priority": "...", "due_date": "..."}}
 - Supprimer : {"action": "delete_task", "id": "ID_VU_DANS_LE_CONTEXTE"}
-- Créer pour une Équipe : {"action": "create_team_task", "team_id": "ID_EQUIPE", "title": "NOM", "priority": "..."}
+- Créer pour une Équipe : {"action": "create_team_task", "team_id": "ID_EQUIPE", "title": "NOM", "priority": "...", "assigned_to": "USER_ID_MEMBRE (optionnel)"}
 
-### RÈGLES D'OR DE LA PAROLE :
-1. **NE LIS JAMAIS LES IDs** (ex: ne dis pas "ID 12345"). Dis juste le nom de la tâche.
-2. **NE DÉCRIS PAS TES ACTIONS** (ex: ne dis pas "*clin d'oeil*", "*sourit*"). Parle simplement.
-3. **N'UTILISE PAS DE MARKDOWN COMPLEXE** (ex: gras **, italique *) car la synthèse vocale les lit comme "astérisque". Écris en texte brut pour la réponse vocale.
-4. **SOIS CONCIS MAIS NATUREL**. Ne liste pas tous les détails techniques (dates complètes, priorités) sauf si demandé. Dis plutôt "C'est noté pour demain".
-5. Si l'utilisateur dit "J'ai fini X", réponds "Super ! C'est marqué comme fait." puis le bloc JSON.
-6. Réponds TOUJOURS en français.`;
+**GESTION DES ÉQUIPES :**
+- Créer une Équipe : {"action": "create_team", "name": "NOM_EQUIPE"}
+- Supprimer une Équipe : {"action": "delete_team", "id": "ID_EQUIPE"} (Seulement si l'utilisateur est propriétaire)
+
+**GESTION DES NOTIFICATIONS :**
+- Marquer comme lu : {"action": "mark_notification_read", "id": "ID_NOTIFICATION"}
+- Tout marquer comme lu : {"action": "mark_all_notifications_read"}
+
+**RAPPELS (Simulés par des tâches pour l'instant) :**
+- Créer un rappel : Utilise "create_task" avec une date précise et une priorité HIGH.
+
+### RÈGLES D'OR :
+1. **NE LIS JAMAIS LES IDs**.
+2. **NE DÉCRIS PAS TES ACTIONS** (pas de *sourire*).
+3. **Pas de Markdown complexe** pour la voix.
+4. **Réponds TOUJOURS en français**.
+5. Si on te demande de planifier l'agenda, analyse les tâches existantes, propose un plan, puis si validé, utilise "update_task" pour mettre des dates.`;
 
 export async function POST(request: NextRequest) {
     try {
@@ -255,6 +260,65 @@ export async function POST(request: NextRequest) {
                                     actionsPerformed.push({ type: 'task_created', task: newTeamTask });
                                 }
                             }
+                            break;
+
+                        case 'create_team':
+                            if (actionData.name) {
+                                // 1. Créer l'équipe
+                                const { data: newTeam, error: teamError } = await supabase
+                                    .from('teams')
+                                    .insert([{ name: actionData.name, created_by: user.id }])
+                                    .select()
+                                    .single();
+
+                                if (!teamError && newTeam) {
+                                    // 2. Ajouter le créateur comme propriétaire
+                                    await supabase
+                                        .from('memberships')
+                                        .insert([{ team_id: newTeam.id, user_id: user.id, role: 'owner' }]);
+
+                                    actionsPerformed.push({ type: 'team_created', team: newTeam });
+                                }
+                            }
+                            break;
+
+                        case 'delete_team':
+                            if (actionData.id) {
+                                const { error } = await supabase
+                                    .from('teams')
+                                    .delete()
+                                    .eq('id', actionData.id)
+                                    .eq('created_by', user.id); // Sécurité simple
+
+                                if (!error) {
+                                    actionsPerformed.push({ type: 'team_deleted', id: actionData.id });
+                                }
+                            }
+                            break;
+
+                        case 'mark_notification_read':
+                            if (actionData.id) {
+                                // Note: La table notifications n'existe pas encore dans ce contexte, 
+                                // mais c'est prévu pour la phase 6. On met le squelette.
+                                /* 
+                                const { error } = await supabase
+                                    .from('notifications')
+                                    .update({ read: true })
+                                    .eq('id', actionData.id)
+                                    .eq('user_id', user.id);
+                                */
+                                actionsPerformed.push({ type: 'notification_read', id: actionData.id });
+                            }
+                            break;
+
+                        case 'mark_all_notifications_read':
+                            /*
+                            await supabase
+                                .from('notifications')
+                                .update({ read: true })
+                                .eq('user_id', user.id);
+                            */
+                            actionsPerformed.push({ type: 'all_notifications_read' });
                             break;
                     }
                 }
