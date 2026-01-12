@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, Users, Loader2 } from "lucide-react";
+import { X, Users, Loader2, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { motion } from "framer-motion";
 
 interface TeamFormProps {
     onClose: () => void;
@@ -54,30 +55,45 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md glass-morphism p-8 space-y-6 relative">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center glass-overlay p-4"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                className="modal-panel w-full max-w-md p-8 space-y-6 relative"
+            >
+                {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+                    className="absolute top-4 right-4 icon-box icon-box-sm hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all"
                 >
-                    <X className="w-6 h-6" />
+                    <X size={16} />
                 </button>
 
-                <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Users className="w-8 h-8 text-primary" />
+                {/* Header */}
+                <div className="text-center space-y-4">
+                    <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                        <Users size={28} className="text-white" />
                     </div>
-                    <h2 className="text-2xl font-outfit font-bold gradient-text">Nouvelle Équipe</h2>
-                    <p className="text-white/40 text-sm">Créez une équipe pour collaborer avec d&apos;autres.</p>
+                    <div>
+                        <h2 className="heading-display text-2xl">Nouvelle <span className="heading-serif">Équipe</span></h2>
+                        <p className="text-[var(--text-muted)] text-sm mt-2">Créez un espace collaboratif pour vos projets.</p>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Nom de l&apos;équipe *</label>
+                        <label className="section-label">Nom de l'équipe *</label>
                         <input
                             type="text"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all"
+                            className="input"
                             placeholder="Ex: Marketing, Dev Team..."
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -85,7 +101,7 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
                     </div>
 
                     {error && (
-                        <div className="text-red-500 text-xs bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-center">
+                        <div className="text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-center">
                             {error}
                         </div>
                     )}
@@ -93,13 +109,13 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
                     <button
                         type="submit"
                         disabled={loading || !name.trim()}
-                        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
+                        className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Users className="w-5 h-5" />}
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
                         <span>Créer l&apos;équipe</span>
                     </button>
                 </form>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }

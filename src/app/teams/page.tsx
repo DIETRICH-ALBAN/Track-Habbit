@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Users, Plus, Crown, Shield, User, Trash2, ArrowLeft, Loader2, X } from "lucide-react";
+import { Users, Plus, Crown, Shield, User, Trash2, ArrowLeft, Loader2, Copy, RefreshCw, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import Sidebar from "@/components/Sidebar";
@@ -121,9 +121,9 @@ export default function TeamsPage() {
 
     const getRoleIcon = (role: MemberRole) => {
         switch (role) {
-            case 'owner': return <Crown className="w-4 h-4 text-yellow-500" />;
-            case 'admin': return <Shield className="w-4 h-4 text-blue-500" />;
-            default: return <User className="w-4 h-4 text-white/40" />;
+            case 'owner': return <Crown className="w-4 h-4 text-amber-400" />;
+            case 'admin': return <Shield className="w-4 h-4 text-blue-400" />;
+            default: return <User className="w-4 h-4 text-[var(--text-muted)]" />;
         }
     };
 
@@ -142,8 +142,8 @@ export default function TeamsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-[var(--accent-purple)] animate-spin" />
             </div>
         );
     }
@@ -152,7 +152,7 @@ export default function TeamsPage() {
     const isOwner = userRole === 'owner';
 
     return (
-        <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white font-sans overflow-x-hidden pb-20 md:pb-0">
+        <div className="min-h-screen flex flex-col md:flex-row bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans overflow-x-hidden pb-20 md:pb-0">
             {/* Notification Panel Overlay */}
             <AnimatePresence>
                 {showNotifications && (
@@ -165,7 +165,7 @@ export default function TeamsPage() {
                 showNotifications={showNotifications}
             />
 
-            <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+            <main className="flex-1 p-6 md:p-12 md:pl-[260px] overflow-y-auto min-h-screen">
                 {showTeamForm && (
                     <TeamForm
                         onClose={() => setShowTeamForm(false)}
@@ -173,101 +173,131 @@ export default function TeamsPage() {
                     />
                 )}
 
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-5xl mx-auto space-y-8 animate-slide-up">
                     {selectedTeam ? (
                         <>
                             <button
                                 onClick={() => setSelectedTeam(null)}
-                                className="flex items-center gap-2 text-white/40 hover:text-white mb-8 transition-colors"
+                                className="flex items-center gap-2 text-[var(--text-muted)] hover:text-white mb-4 transition-colors group"
                             >
-                                <ArrowLeft className="w-5 h-5" />
-                                <span>Retour aux équipes</span>
+                                <div className="icon-box icon-box-sm group-hover:bg-white/10">
+                                    <ArrowLeft size={16} />
+                                </div>
+                                <span className="text-sm font-medium">Retour aux équipes</span>
                             </button>
 
-                            <header className="mb-12">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center">
-                                        <Users className="w-8 h-8 text-primary" />
+                            <header className="mb-8 flex items-center justify-between">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-gradient-to-br from-[var(--bg-card)] to-[var(--bg-elevated)] border border-[var(--border-subtle)] shadow-xl">
+                                        <Users className="w-10 h-10 text-[var(--accent-purple)]" />
                                     </div>
                                     <div>
-                                        <h1 className="text-3xl font-bold font-outfit">{selectedTeam.name}</h1>
-                                        <p className="text-white/40 text-sm">{teamMembers.length} membre{teamMembers.length > 1 ? 's' : ''}</p>
+                                        <h1 className="heading-display text-4xl mb-1">{selectedTeam.name}</h1>
+                                        <p className="text-[var(--text-muted)] flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                            {teamMembers.length} membre{teamMembers.length > 1 ? 's' : ''} actif{teamMembers.length > 1 ? 's' : ''}
+                                        </p>
                                     </div>
                                 </div>
                             </header>
 
                             {/* Invite Section */}
                             {(isOwner || userRole === 'admin') && (
-                                <section className="glass-morphism p-6 mb-8">
-                                    <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                        <Plus className="w-5 h-5 text-primary" />
-                                        Lien d&apos;invitation
+                                <section className="card p-8 mb-8 relative overflow-hidden">
+                                    {/* Background decoration */}
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent-purple)]/5 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
+
+                                    <h2 className="heading-serif text-xl mb-6 flex items-center gap-3">
+                                        <Plus className="w-5 h-5 text-[var(--accent-purple)]" />
+                                        Inviter des membres
                                     </h2>
 
                                     {!inviteCode ? (
-                                        <button
-                                            onClick={generateInvite}
-                                            disabled={inviteLoading}
-                                            className="w-full flex items-center justify-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary py-4 rounded-xl font-bold border border-primary/30 transition-all disabled:opacity-50"
-                                        >
-                                            {inviteLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-                                            <span>Générer un lien d&apos;invitation unique</span>
-                                        </button>
-                                    ) : (
-                                        <div className="flex flex-col md:flex-row gap-3">
-                                            <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white/60 flex items-center overflow-hidden">
-                                                <span className="truncate">{window.location.origin}/join/{inviteCode}</span>
-                                            </div>
+                                        <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[var(--border-subtle)] rounded-2xl bg-[var(--bg-elevated)]/30 hover:bg-[var(--bg-elevated)]/50 transition-colors">
+                                            <Users className="w-12 h-12 text-[var(--text-muted)] mb-4" opacity={0.5} />
+                                            <p className="text-[var(--text-muted)] mb-6 text-center max-w-md">Générez un lien unique pour inviter vos collègues à rejoindre cet espace de travail.</p>
                                             <button
-                                                onClick={copyInviteLink}
-                                                className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap"
+                                                onClick={generateInvite}
+                                                disabled={inviteLoading}
+                                                className="btn-primary"
                                             >
-                                                Copier le lien
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    if (confirm("Voulez-vous réinitialiser le lien ? L'ancien ne fonctionnera plus.")) {
-                                                        supabase.from('team_invites').delete().eq('team_id', selectedTeam.id).then(() => setInviteCode(null));
-                                                    }
-                                                }}
-                                                className="bg-white/5 hover:bg-red-500/10 text-white/40 hover:text-red-500 px-4 py-3 rounded-xl transition-all border border-white/10"
-                                            >
-                                                Réinitialiser
+                                                {inviteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                                <span>Générer le lien d&apos;invitation</span>
                                             </button>
                                         </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="flex flex-col md:flex-row gap-3">
+                                                <div className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm text-[var(--text-secondary)] flex items-center overflow-hidden font-mono">
+                                                    <span className="truncate w-full">{window.location.origin}/join/{inviteCode}</span>
+                                                </div>
+                                                <button
+                                                    onClick={copyInviteLink}
+                                                    className="btn-primary"
+                                                >
+                                                    <Copy className="w-4 h-4" />
+                                                    <span>Copier</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm("Voulez-vous réinitialiser le lien ? L'ancien ne fonctionnera plus.")) {
+                                                            supabase.from('team_invites').delete().eq('team_id', selectedTeam.id).then(() => setInviteCode(null));
+                                                        }
+                                                    }}
+                                                    className="btn-secondary text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border-rose-500/20"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <p className="text-xs text-[var(--text-muted)] mt-2 flex items-center gap-2">
+                                                <Shield className="w-3 h-3" />
+                                                Seules les personnes disposant de ce lien pourront rejoindre l&apos;équipe.
+                                            </p>
+                                        </div>
                                     )}
-                                    <p className="text-[10px] text-white/30 uppercase tracking-widest mt-4">
-                                        Toute personne ayant ce lien pourra rejoindre l&apos;équipe en tant que membre.
-                                    </p>
                                 </section>
                             )}
 
                             {/* Members List */}
                             <section>
-                                <h2 className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">Membres</h2>
-                                <div className="space-y-3">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="accent-line" />
+                                    <h2 className="section-label mb-0">Membres de l'équipe</h2>
+                                </div>
+
+                                <div className="grid gap-4">
                                     <AnimatePresence>
                                         {teamMembers.map((member) => (
                                             <motion.div
                                                 key={member.id}
-                                                initial={{ opacity: 0, y: 20 }}
+                                                initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, x: -100 }}
-                                                className="glass-morphism p-4 flex items-center gap-4 group"
+                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                className="card p-4 flex items-center gap-4 group hover:border-[var(--accent-purple)]/30 transition-all"
                                             >
-                                                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+                                                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
                                                     {getRoleIcon(member.role)}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium">{member.user_id === currentUserId ? "Vous" : `Membre ${member.user_id.slice(0, 8)}...`}</p>
-                                                    <p className="text-xs text-white/40">{getRoleLabel(member.role)}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-semibold text-[var(--text-primary)]">
+                                                            {member.user_id === currentUserId ? "Vous" : `Membre ${member.user_id.slice(0, 8)}...`}
+                                                        </p>
+                                                        {member.user_id === currentUserId && <span className="badge">Moi</span>}
+                                                    </div>
+                                                    <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${member.role === 'owner' ? 'bg-amber-400' : 'bg-blue-400'}`}></span>
+                                                        {getRoleLabel(member.role)}
+                                                    </p>
                                                 </div>
+
                                                 {isOwner && member.user_id !== currentUserId && (
                                                     <button
                                                         onClick={() => removeMember(member.id)}
-                                                        className="p-2 hover:bg-red-500/10 rounded-lg text-red-500/60 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                                        className="icon-box icon-box-sm text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 opacity-0 group-hover:opacity-100 transition-all"
+                                                        title="Retirer le membre"
                                                     >
-                                                        <Trash2 className="w-5 h-5" />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 )}
                                             </motion.div>
@@ -278,74 +308,83 @@ export default function TeamsPage() {
 
                             {/* Delete Team */}
                             {isOwner && (
-                                <section className="mt-12 pt-8 border-t border-white/10">
+                                <section className="mt-12 pt-8 border-t border-[var(--border-subtle)] flex justify-end">
                                     <button
                                         onClick={() => {
-                                            if (confirm("Êtes-vous sûr de vouloir supprimer cette équipe ?")) {
+                                            if (confirm("Êtes-vous sûr de vouloir supprimer cette équipe ? Cette action est irréversible.")) {
                                                 deleteTeam(selectedTeam.id);
                                             }
                                         }}
-                                        className="text-red-500 text-sm hover:underline"
+                                        className="btn-secondary text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 border-rose-500/20"
                                     >
-                                        Supprimer cette équipe
+                                        <Trash2 className="w-4 h-4" />
+                                        <span>Supprimer cette équipe</span>
                                     </button>
                                 </section>
                             )}
                         </>
                     ) : (
                         <>
-                            <header className="mb-12 flex justify-between items-end">
+                            <header className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                                 <div>
-                                    <h1 className="text-4xl md:text-5xl font-bold font-outfit gradient-text mb-2 tracking-tight">Équipes</h1>
-                                    <p className="text-white/40 font-medium">Gérez vos équipes et collaborez avec d&apos;autres.</p>
+                                    <h1 className="heading-display text-4xl mb-2">Vos <span className="heading-serif">Équipes</span></h1>
+                                    <p className="text-[var(--text-muted)] max-w-lg">Gérez vos espaces de collaboration, invitez des membres et suivez l&apos;avancement des projets collectifs.</p>
                                 </div>
                                 <button
                                     onClick={() => setShowTeamForm(true)}
-                                    className="hidden md:flex items-center gap-2 bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg hover:scale-105 active:scale-95"
+                                    className="btn-primary"
                                 >
-                                    <Plus className="w-5 h-5" strokeWidth={3} />
+                                    <Plus className="w-5 h-5" />
                                     <span>Nouvelle Équipe</span>
                                 </button>
                             </header>
 
                             {teams.length === 0 ? (
-                                <div className="text-center py-20">
-                                    <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <Users className="w-10 h-10 text-white/20" />
+                                <div className="card p-20 text-center flex flex-col items-center">
+                                    <div className="w-24 h-24 bg-[var(--bg-elevated)] rounded-full flex items-center justify-center mb-6 border border-[var(--border-subtle)]">
+                                        <Users className="w-10 h-10 text-[var(--accent-purple)]" opacity={0.5} />
                                     </div>
-                                    <h3 className="text-xl font-bold mb-2">Aucune équipe</h3>
-                                    <p className="text-white/40 mb-6">Créez votre première équipe pour collaborer&nbsp;!</p>
+                                    <h3 className="heading-display text-2xl mb-3">Aucune équipe active</h3>
+                                    <p className="text-[var(--text-muted)] mb-8 max-w-md">Créez votre première équipe pour commencer à collaborer sur des tâches et partager des documents.</p>
                                     <button
                                         onClick={() => setShowTeamForm(true)}
-                                        className="bg-primary hover:bg-blue-600 px-6 py-3 rounded-2xl font-bold transition-all"
+                                        className="btn-primary"
                                     >
                                         Créer une équipe
                                     </button>
                                 </div>
                             ) : (
-                                <div className="grid gap-4">
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                     <AnimatePresence>
-                                        {teams.map((team) => (
+                                        {teams.map((team, index) => (
                                             <motion.div
                                                 key={team.id}
                                                 initial={{ opacity: 0, y: 20 }}
                                                 animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                transition={{ delay: index * 0.1 }}
                                                 onClick={() => setSelectedTeam(team)}
-                                                className="glass-morphism p-6 flex items-center gap-6 group hover:border-primary/30 transition-all cursor-pointer"
+                                                className="card p-6 flex flex-col gap-6 cursor-pointer group hover:border-[var(--accent-purple)]/50 hover:shadow-[0_0_30px_-10px_rgba(168,85,247,0.15)] transition-all min-h-[180px] relative overflow-hidden"
                                             >
-                                                <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center">
-                                                    <Users className="w-7 h-7 text-primary" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{team.name}</h3>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        {getRoleIcon(getUserRole(team.id) || 'member')}
-                                                        <span className="text-xs text-white/40">{getRoleLabel(getUserRole(team.id) || 'member')}</span>
+                                                {/* Gradient Hover Effect */}
+                                                <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-purple)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                                <div className="flex justify-between items-start relative z-10">
+                                                    <div className="w-12 h-12 bg-[var(--bg-elevated)] rounded-xl flex items-center justify-center border border-[var(--border-subtle)] group-hover:border-[var(--accent-purple)]/30 group-hover:text-[var(--accent-purple)] transition-colors">
+                                                        <Users className="w-6 h-6" />
                                                     </div>
+                                                    <span className="badge bg-[var(--bg-primary)] border-[var(--border-subtle)]">
+                                                        {getRoleLabel(getUserRole(team.id) || 'member')}
+                                                    </span>
                                                 </div>
-                                                <div className="text-white/40 text-sm hidden md:block">
-                                                    Gérer →
+
+                                                <div className="relative z-10 mt-auto">
+                                                    <h3 className="text-xl font-bold font-display group-hover:text-[var(--accent-purple-light)] transition-colors">{team.name}</h3>
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <p className="text-xs text-[var(--text-muted)]">Cliquez pour gérer</p>
+                                                        <div className="w-8 h-8 rounded-full bg-[var(--bg-primary)] flex items-center justify-center -mr-2 shadow-sm border border-[var(--border-subtle)]">
+                                                            <ArrowLeft className="w-4 h-4 rotate-180 text-[var(--text-muted)] group-hover:text-[var(--accent-purple)] transition-colors" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         ))}

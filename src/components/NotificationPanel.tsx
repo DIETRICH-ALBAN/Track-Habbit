@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, CheckCircle2, Clock, Users, X } from "lucide-react";
+import { Bell, CheckCircle2, Clock, Users, X, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import { formatDistanceToNow } from "date-fns";
@@ -26,11 +26,7 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
     const supabase = createClient();
 
     useEffect(() => {
-        // Here we could fetch real notifications from a table
-        // For now, let's simulate by listening to Realtime task changes or showing a mock
         const fetchNotifications = async () => {
-            // Simulated notifications for demo purposes
-            // In a real app, you'd have a 'notifications' table
             setNotifications([
                 {
                     id: '1',
@@ -54,7 +50,6 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
         fetchNotifications();
 
-        // Optional: Real-time listener for task changes
         const channel = supabase
             .channel('task-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
@@ -80,82 +75,101 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     };
 
+    const getTypeStyles = (type: string) => {
+        switch (type) {
+            case 'task_created':
+                return { bg: 'bg-[var(--accent-purple)]/10', text: 'text-[var(--accent-purple-light)]' };
+            case 'task_completed':
+                return { bg: 'bg-emerald-500/10', text: 'text-emerald-400' };
+            case 'team_update':
+                return { bg: 'bg-[var(--accent-teal)]/10', text: 'text-[var(--accent-teal-light)]' };
+            default:
+                return { bg: 'bg-white/5', text: 'text-white/60' };
+        }
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
-            className="fixed inset-y-0 right-0 w-full md:w-96 bg-black/90 backdrop-blur-2xl border-l border-white/10 z-[110] shadow-2xl flex flex-col"
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            className="fixed inset-y-0 right-0 w-full md:w-[420px] bg-[var(--bg-card)] border-l border-[var(--border-subtle)] z-[110] flex flex-col"
         >
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+            {/* Header */}
+            <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/20 rounded-lg">
-                        <Bell className="w-5 h-5 text-primary" />
+                    <div className="icon-box">
+                        <Bell size={20} />
                     </div>
-                    <h2 className="text-xl font-bold font-outfit">Notifications</h2>
+                    <div>
+                        <h2 className="heading-display text-lg">Notifications</h2>
+                        <p className="text-xs text-[var(--text-muted)]">{notifications.filter(n => !n.read).length} non lues</p>
+                    </div>
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                    className="icon-box icon-box-sm hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all"
                 >
-                    <X className="w-6 h-6 text-white/40" />
+                    <X size={16} />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {loading ? (
                     <div className="flex justify-center py-10">
-                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-2 border-[var(--accent-purple)] border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : notifications.length > 0 ? (
-                    notifications.map((n) => (
-                        <div
-                            key={n.id}
-                            onClick={() => markAsRead(n.id)}
-                            className={`p-4 rounded-2xl border transition-all cursor-pointer group ${n.read ? 'bg-white/[0.02] border-white/5' : 'bg-primary/5 border-primary/20 shadow-lg shadow-primary/5'
-                                }`}
-                        >
-                            <div className="flex items-start gap-4">
-                                <div className={`p-2 rounded-xl ${n.type === 'task_created' ? 'bg-blue-500/10 text-blue-500' :
-                                    n.type === 'task_completed' ? 'bg-green-500/10 text-green-500' :
-                                        'bg-purple-500/10 text-purple-500'
-                                    }`}>
-                                    {n.type === 'task_created' ? <Clock className="w-4 h-4" /> :
-                                        n.type === 'task_completed' ? <CheckCircle2 className="w-4 h-4" /> :
-                                            <Users className="w-4 h-4" />}
+                    notifications.map((n) => {
+                        const styles = getTypeStyles(n.type);
+                        return (
+                            <div
+                                key={n.id}
+                                onClick={() => markAsRead(n.id)}
+                                className={`card p-4 cursor-pointer transition-all ${!n.read ? 'border-[var(--accent-purple)]/30 bg-[var(--accent-purple)]/5' : ''}`}
+                            >
+                                <div className="flex items-start gap-4">
+                                    <div className={`p-2.5 rounded-xl ${styles.bg} ${styles.text}`}>
+                                        {n.type === 'task_created' ? <Clock size={16} /> :
+                                            n.type === 'task_completed' ? <CheckCircle2 size={16} /> :
+                                                <Users size={16} />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className={`text-sm font-semibold ${n.read ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
+                                            {n.title}
+                                        </h3>
+                                        <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2 leading-relaxed">
+                                            {n.description}
+                                        </p>
+                                        <span className="text-[10px] text-[var(--text-muted)] mt-2 block uppercase tracking-wider">
+                                            {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: fr })}
+                                        </span>
+                                    </div>
+                                    {!n.read && (
+                                        <div className="w-2.5 h-2.5 bg-[var(--accent-purple)] rounded-full mt-1 animate-pulse" />
+                                    )}
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className={`text-sm font-bold ${n.read ? 'text-white/60' : 'text-white'}`}>
-                                        {n.title}
-                                    </h3>
-                                    <p className="text-xs text-white/40 mt-1 line-clamp-2 leading-relaxed">
-                                        {n.description}
-                                    </p>
-                                    <span className="text-[10px] text-white/20 mt-2 block font-medium uppercase tracking-wider">
-                                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: fr })}
-                                    </span>
-                                </div>
-                                {!n.read && (
-                                    <div className="w-2 h-2 bg-primary rounded-full mt-1.5 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                                )}
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 ) : (
-                    <div className="text-center py-20">
-                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Bell className="w-8 h-8 text-white/20" />
+                    <div className="text-center py-16">
+                        <div className="icon-box w-16 h-16 mx-auto mb-4">
+                            <Bell size={24} />
                         </div>
-                        <p className="text-white/40 text-sm font-medium">Aucune notification pour le moment.</p>
+                        <p className="text-[var(--text-muted)] text-sm">Aucune notification pour le moment.</p>
                     </div>
                 )}
             </div>
 
+            {/* Footer */}
             {notifications.length > 0 && (
-                <div className="p-4 border-t border-white/10">
+                <div className="p-4 border-t border-[var(--border-subtle)]">
                     <button
                         onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
-                        className="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-sm font-bold text-white/60"
+                        className="btn-secondary w-full"
                     >
                         Tout marquer comme lu
                     </button>
