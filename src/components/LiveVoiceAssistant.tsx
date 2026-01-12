@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import { Mic, PhoneOff, Loader2, Volume2, Activity, Square, AlertCircle, Sparkles, Keyboard, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { Loader2, Volume2, Activity, Sparkles, X } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface LiveVoiceAssistantProps {
     onTaskCreated?: () => void;
@@ -21,7 +21,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const [status, setStatus] = useState<"idle" | "listening" | "processing" | "speaking" | "error">("idle");
     const [transcript, setTranscript] = useState("");
     const [volume, setVolume] = useState(0);
-    const [debugInfo, setDebugInfo] = useState("");
 
     const recognitionRef = useRef<any>(null);
     const lastTranscriptRef = useRef<string>("");
@@ -29,33 +28,35 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const statusRef = useRef(status);
-    const isActiveRef = useRef(isActive);
     const shouldIdentifyRef = useRef(false);
     const lastTalkingTimeRef = useRef<number>(Date.now());
 
-    // Pour l'audio natif fallback
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
-    useEffect(() => { statusRef.current = status; }, [status]);
-
     useEffect(() => {
-        isActiveRef.current = isActive;
+        statusRef.current = status;
+        console.log("[LiveVoiceAssistant] Status changed to:", status);
+    }, [status]);
+
+    // Major fix: set shouldIdentifyRef.current immediately when isActive is true
+    useEffect(() => {
         shouldIdentifyRef.current = isActive;
     }, [isActive]);
 
-    // Robust Cleanup & Auto-start
+    // Cleanup & Auto-start
     useEffect(() => {
+        console.log("[LiveVoiceAssistant] Component Mounted. Starting session...");
         startSession();
 
         return () => {
+            console.log("[LiveVoiceAssistant] Component Unmounting. Cleaning up...");
             handleCompleteTermination();
         };
     }, []);
 
     const handleCompleteTermination = () => {
         shouldIdentifyRef.current = false;
-        isActiveRef.current = false;
 
         if (recognitionRef.current) {
             recognitionRef.current.onend = null;
@@ -84,6 +85,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     };
 
     const speak = (text: string) => {
+        console.log("[LiveVoiceAssistant] Assistant speaking:", text);
         if (!text) return;
         const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
         if (!cleanText) return;
@@ -101,7 +103,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 restartListening();
             }
         };
-        utterance.onerror = () => {
+        utterance.onerror = (e) => {
+            console.error("[LiveVoiceAssistant] Speech synthesis error:", e);
             if (shouldIdentifyRef.current) {
                 setStatus("listening");
                 restartListening();
@@ -113,8 +116,12 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const processText = async (text: string, audioBase64?: string) => {
         if (statusRef.current === "processing") return;
-        if (!shouldIdentifyRef.current) return;
+        if (!shouldIdentifyRef.current) {
+            console.warn("[LiveVoiceAssistant] Aborting processText: Session not active");
+            return;
+        }
 
+        console.log("[LiveVoiceAssistant] Processing input:", text || "[Audio only]");
         setStatus("processing");
 
         try {
@@ -124,13 +131,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 body: JSON.stringify({ message: text, audio: audioBase64 }),
             });
 
-            if (!res.ok) throw new Error("Erreur serveur");
+            if (!res.ok) throw new Error(`Serveur error: ${res.status}`);
             const data = await res.json();
+            console.log("[LiveVoiceAssistant] IA Response received:", data);
 
-            if (data.actions && data.actions.length > 0) onTaskCreated?.();
+            if (data.actions && data.actions.length > 0) {
+                console.log("[LiveVoiceAssistant] Actions detected. calling onTaskCreated.");
+                onTaskCreated?.();
+            }
             speak(data.message);
         } catch (error) {
-            console.error(error);
+            console.error("[LiveVoiceAssistant] API call failed:", error);
             setStatus("error");
             if (shouldIdentifyRef.current) {
                 setTimeout(() => setStatus("listening"), 3000);
@@ -151,54 +162,62 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         analyserRef.current.fftSize = 256;
         source.connect(analyserRef.current);
 
-        const bufferLength = analyserRef.current.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
 
         const update = () => {
-            if (analyserRef.current && statusRef.current === "listening" && shouldIdentifyRef.current) {
+            if (!shouldIdentifyRef.current) return;
+
+            if (analyserRef.current && statusRef.current === "listening") {
                 analyserRef.current.getByteFrequencyData(dataArray);
                 let sum = 0;
-                for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
-                const avg = sum / bufferLength;
+                for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                const avg = sum / dataArray.length;
                 setVolume(avg / 128);
 
-                // Auto-submit on silence (2 seconds)
+                // Auto-submit on silence detection (2.5 seconds)
                 if (avg > 15) {
                     lastTalkingTimeRef.current = Date.now();
                 } else if (Date.now() - lastTalkingTimeRef.current > 2500) {
-                    if (lastTranscriptRef.current.trim() && statusRef.current === "listening") {
+                    const currentTranscript = (lastTranscriptRef.current + transcript).trim();
+                    if (currentTranscript && statusRef.current === "listening") {
+                        console.log("[LiveVoiceAssistant] Silence detected. Auto-submitting...");
                         handleSubmit();
                     }
                 }
             }
-            if (shouldIdentifyRef.current) {
-                animationFrameRef.current = requestAnimationFrame(update);
-            }
+            animationFrameRef.current = requestAnimationFrame(update);
         };
         update();
     };
 
     const startSession = async () => {
         try {
+            console.log("[LiveVoiceAssistant] startSession() triggered.");
+            shouldIdentifyRef.current = true; // Set IMMEDIATELY to avoid race conditions
             setIsActive(true);
             setStatus("listening");
             setTranscript("");
             lastTranscriptRef.current = "";
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("[LiveVoiceAssistant] Microphone access granted.");
+
             initRecognition();
             startAudioAnalysis(stream);
 
             mediaRecorderRef.current = new MediaRecorder(stream);
             mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
             mediaRecorderRef.current.onstop = async () => {
+                if (!shouldIdentifyRef.current) return;
+                console.log("[LiveVoiceAssistant] MediaRecorder stopped. Processing fallback audio.");
                 const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
                 audioChunksRef.current = [];
                 const reader = new FileReader();
                 reader.readAsDataURL(blob);
                 reader.onloadend = () => {
                     const base64 = reader.result as string;
-                    if (!lastTranscriptRef.current.trim() && shouldIdentifyRef.current) {
+                    // Only use audio fallback if transcript is empty
+                    if (!lastTranscriptRef.current.trim() && !transcript.trim() && shouldIdentifyRef.current) {
                         processText("", base64.split(',')[1]);
                     }
                 };
@@ -206,19 +225,24 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             mediaRecorderRef.current.start();
 
         } catch (err) {
-            console.error(err);
+            console.error("[LiveVoiceAssistant] Microphone access error:", err);
             setStatus("error");
         }
     };
 
     const stopSession = () => {
+        console.log("[LiveVoiceAssistant] User manually stopped session.");
         handleCompleteTermination();
+        setIsActive(false);
         onClose?.();
     };
 
     const initRecognition = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
+        if (!SpeechRecognition) {
+            console.error("[LiveVoiceAssistant] SpeechRecognition not supported by this browser.");
+            return;
+        }
 
         const recognition = new SpeechRecognition();
         recognition.lang = "fr-FR";
@@ -241,18 +265,29 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
         recognition.onend = () => {
             if (shouldIdentifyRef.current && statusRef.current === "listening") {
+                console.log("[LiveVoiceAssistant] Recognition ended unexpectedly. Restarting...");
                 try { recognition.start(); } catch (e) { }
+            } else {
+                console.log("[LiveVoiceAssistant] Recognition ended naturally.");
             }
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error("[LiveVoiceAssistant] Recognition error:", event.error);
         };
 
         try {
             recognition.start();
             recognitionRef.current = recognition;
-        } catch (e) { }
+            console.log("[LiveVoiceAssistant] Recognition started successfully.");
+        } catch (e) {
+            console.error("[LiveVoiceAssistant] Failed to start recognition:", e);
+        }
     };
 
     const restartListening = () => {
         if (!shouldIdentifyRef.current) return;
+        console.log("[LiveVoiceAssistant] Resetting for new input.");
         lastTranscriptRef.current = "";
         setTranscript("");
         try { recognitionRef.current?.start(); } catch (e) { }
@@ -262,14 +297,19 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     };
 
     const handleSubmit = () => {
-        const text = transcript.trim() || lastTranscriptRef.current.trim();
-        if (text) {
+        const finalTranscript = (lastTranscriptRef.current + transcript).trim();
+        console.log("[LiveVoiceAssistant] handleSubmit() called with text:", finalTranscript);
+
+        if (finalTranscript) {
             if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
             if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                // Prevent fallback processing when we have text
+                mediaRecorderRef.current.onstop = null;
                 mediaRecorderRef.current.stop();
             }
-            processText(text);
+            processText(finalTranscript);
         } else if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            // No text, trigger fallback audio via onstop
             mediaRecorderRef.current.stop();
         }
     };
@@ -278,7 +318,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-transparent px-6">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/5 blur-[120px] rounded-full pointer-events-none" />
 
-            {/* Visualizer */}
+            {/* Neural Visualizer UI */}
             <div className="relative w-full max-w-md aspect-square flex items-center justify-center z-10">
                 <motion.div
                     animate={{
@@ -320,12 +360,12 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 </div>
             </div>
 
-            {/* Controls */}
+            {/* Controls and Transcript */}
             <div className="w-full max-w-2xl mt-12 space-y-8 z-20">
                 <div className="text-center space-y-4">
                     <div className="inline-flex items-center gap-2 badge px-4 py-1.5 border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
                         <span className={`w-2 h-2 rounded-full ${status === 'listening' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
-                        <span className="text-[10px] uppercase tracking-[0.2em] font-bold">
+                        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white">
                             {status === 'listening' ? "Live System Active" : "Neural Link Established"}
                         </span>
                     </div>
@@ -339,7 +379,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                         </h2>
                         <div className="mt-4 min-h-[60px] max-h-[120px] overflow-y-auto px-6 py-4 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl">
                             <p className="text-[var(--text-secondary)] text-sm italic opacity-80 leading-relaxed font-medium">
-                                {transcript || "Commencez à parler pour que l'IA puisse vous aider..."}
+                                {transcript || (lastTranscriptRef.current.trim() ? lastTranscriptRef.current : "Commencez à parler pour que l'IA puisse vous aider...")}
                             </p>
                         </div>
                     </div>
@@ -348,7 +388,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 <div className="flex gap-4 justify-center">
                     <button
                         onClick={handleSubmit}
-                        disabled={!transcript.trim() && !lastTranscriptRef.current.trim()}
+                        disabled={!transcript.trim() && !lastTranscriptRef.current.trim() && status === 'processing'}
                         className="btn-primary min-w-[200px] h-14 text-base disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                         <Sparkles size={18} />

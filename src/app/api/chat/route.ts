@@ -182,10 +182,21 @@ export async function POST(request: NextRequest) {
         // Traiter les actions via extraction du bloc JSON
         const actionsPerformed: any[] = [];
         try {
+            // Tentative 1: Bloc JSON avec backticks
+            let jsonString = "";
             const jsonBlockMatch = assistantMessageStr.match(/```json([\s\S]*?)```/);
             if (jsonBlockMatch && jsonBlockMatch[1]) {
-                const actionsData = JSON.parse(jsonBlockMatch[1]);
+                jsonString = jsonBlockMatch[1];
+            } else {
+                // Tentative 2: Recherche de tableau JSON [ ... ] sans backticks
+                const arrayMatch = assistantMessageStr.match(/\[\s*\{[\s\S]*"action":[\s\S]*\}\s*\]/);
+                if (arrayMatch) jsonString = arrayMatch[0];
+            }
+
+            if (jsonString) {
+                const actionsData = JSON.parse(jsonString);
                 const actionsList = Array.isArray(actionsData) ? actionsData : [actionsData];
+                console.log("[API Chat] Actions extraites:", actionsList.length);
 
                 for (const actionData of actionsList) {
                     switch (actionData.action) {

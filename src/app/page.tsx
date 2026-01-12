@@ -248,7 +248,7 @@ export default function DashboardPage() {
           />
         )}
         {showAIChat && <AIChat onClose={() => setShowAIChat(false)} />}
-        {isAIVisualMode && <LiveVoiceAssistant onClose={() => setIsAIVisualMode(false)} />}
+        {isAIVisualMode && <LiveVoiceAssistant onClose={() => setIsAIVisualMode(false)} onTaskCreated={fetchTasks} />}
         {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
       </AnimatePresence>
     </div>
