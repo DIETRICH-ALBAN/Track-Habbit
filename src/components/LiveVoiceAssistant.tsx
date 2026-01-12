@@ -161,8 +161,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
                 if (avg > 15) {
                     lastTalkingTimeRef.current = Date.now();
-                } else if (Date.now() - lastTalkingTimeRef.current > 4000) {
-                    // Auto-submit after 4s of silence
+                } else if (Date.now() - lastTalkingTimeRef.current > 4500) {
+                    // Auto-submit after 4.5s of silence on mobile/unstable links
                     if (transcript.trim() && statusRef.current === "listening") handleVoiceSubmit();
                 }
             }
@@ -215,6 +215,11 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         recognition.continuous = true;
         recognition.interimResults = true;
 
+        recognition.onstart = () => {
+            console.log("[VoiceAssistant] Recognition ON");
+            setErrorMessage("");
+        };
+
         recognition.onresult = (event: any) => {
             let fullText = lastTranscriptRef.current;
             let interim = "";
@@ -227,11 +232,13 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     interim += text;
                 }
             }
-            setTranscript(fullText + interim);
+            // Update immediately
+            setTranscript((fullText + interim).trim());
             lastTalkingTimeRef.current = Date.now();
         };
 
         recognition.onend = () => {
+            console.log("[VoiceAssistant] Recognition OFF");
             if (isMicEnabledRef.current && statusRef.current === "listening") {
                 try { recognition.start(); } catch (e) { }
             }
@@ -399,9 +406,9 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     className={`w-28 h-28 rounded-3xl border-2 flex flex-col items-center justify-center bg-white/[0.03] backdrop-blur-xl transition-all duration-500 ${status === 'listening' ? (volume > 0.05 ? 'border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'border-purple-500/30') :
-                                            status === 'speaking' ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' :
-                                                status === 'error' ? 'border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.3)]' :
-                                                    'border-white/10'
+                                        status === 'speaking' ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' :
+                                            status === 'error' ? 'border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.3)]' :
+                                                'border-white/10'
                                         }`}>
                                     {status === 'processing' ? <Loader2 className="w-10 h-10 text-purple-500 animate-spin" /> :
                                         status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-pulse" /> :
