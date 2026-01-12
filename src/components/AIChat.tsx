@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Loader2, CheckCircle2, Sparkles, Pencil, Trash2 } from "lucide-react";
+import { MessageSquare, Send, Loader2, CheckCircle2, Sparkles, Pencil, Trash2, X } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
 interface ActionPerformed {
@@ -22,9 +22,10 @@ interface AIChatProps {
     onTaskCreated?: () => void;
     initialMessage?: string;
     onMessageProcessed?: () => void;
+    onClose?: () => void;
 }
 
-export default function AIChat({ onTaskCreated, initialMessage, onMessageProcessed }: AIChatProps) {
+export default function AIChat({ onTaskCreated, initialMessage, onMessageProcessed, onClose }: AIChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
@@ -172,20 +173,30 @@ export default function AIChat({ onTaskCreated, initialMessage, onMessageProcess
     return (
         <aside className="w-full max-w-2xl mx-auto flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
-                        <Sparkles className="w-7 h-7 text-white" />
+            <div className="flex items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                            <Sparkles className="w-7 h-7 text-white" />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[var(--bg-primary)] rounded-full" />
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[var(--bg-primary)] rounded-full" />
+                    <div>
+                        <h2 className="heading-display text-xl">Track Habbit AI</h2>
+                        <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                            Gemini 2.0 • En ligne
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="heading-display text-xl">Track Habbit AI</h2>
-                    <p className="text-xs text-emerald-400 font-medium flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                        Gemini 2.0 • En ligne
-                    </p>
-                </div>
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-white/5 rounded-full transition-colors text-[var(--text-muted)] hover:text-white"
+                    >
+                        <X size={24} />
+                    </button>
+                )}
             </div>
 
             {/* Messages */}
