@@ -174,3 +174,32 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* === AURORA BACKGROUND VARIABLES === */
+:root {
+  --white: #ffffff;
+  --black: #0a0a0a;
+  --transparent: transparent;
+
+  /* Tailwind Colors as CSS Variables for Aurora */
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --indigo-300: #a5b4fc;
+  --violet-200: #ddd6fe;
+}
+
+/* === AURORA ANIMATION === */
+@keyframes aurora {
+  from {
+    background-position: 50% 50%, 50% 50%;
+  }
+
+  to {
+    background-position: 350% 50%, 350% 50%;
+  }
+}
+
+.animate-aurora {
+  animation: aurora 60s linear infinite;
+}

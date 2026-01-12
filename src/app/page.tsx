@@ -24,6 +24,7 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/ui/StatCard";
 import { TaskCard } from "@/components/ui/TaskCard";
+import { AuroraBackground } from "@/components/ui/aurora-background";
 
 export default function Home() {
   const pathname = usePathname();
@@ -100,9 +101,9 @@ export default function Home() {
   const efficiency = todayTasks.length > 0 ? Math.round((todayDone.length / todayTasks.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#030303] text-white selection:bg-primary/30">
+    <AuroraBackground className="min-h-screen text-white selection:bg-indigo-500/30">
 
-      {/* Background Ambience */}
+      {/* Background Ambience (layered on top of Aurora) */}
       <div className="ambient-spotlight" />
       <div className="edge-vignette" />
 
@@ -277,6 +278,6 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </AuroraBackground>
   );
 }
