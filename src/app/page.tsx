@@ -202,7 +202,7 @@ export default function DashboardPage() {
                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-[var(--accent-purple)]/20 blur-[80px] rounded-full" />
 
                       <div className="relative z-10 w-full h-44 mb-6 cursor-pointer group" onClick={() => setIsAIVisualMode(true)}>
-                        <div className="w-full h-full transform scale-125">
+                        <div className="w-full h-full transform scale-75 origin-center">
                           <SplineObject />
                         </div>
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
