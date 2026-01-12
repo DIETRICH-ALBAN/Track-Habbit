@@ -9,47 +9,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* === COLOR PALETTE === */
+  /* === COLOR PALETTE REFRESHED === */
+  /* Vibrant "Opticore" Theme */
+  --bg-primary: #030014;
+  /* Deep Space Purple/Black */
+  --bg-card: rgba(30, 27, 75, 0.4);
+  /* Indigo Glass */
+  --bg-card-hover: rgba(46, 16, 101, 0.5);
+  /* Deep Purple Glass */
+  --bg-elevated: rgba(19, 21, 44, 0.7);
 
-  /* Backgrounds */
-  --bg-primary: #0a0a0b;
-  --bg-card: #131316;
-  --bg-card-hover: #1a1a1f;
-  --bg-elevated: #18181b;
+  /* New Vibrant Accents */
+  --accent-purple: #9d4edd;
+  --accent-purple-light: #c77dff;
+  --accent-purple-dark: #5a189a;
+  --accent-pink: #f72585;
+  --accent-blue: #4361ee;
 
-  /* Accent Colors */
-  --accent-purple: #8B5CF6;
-  --accent-purple-light: #A855F7;
-  --accent-purple-dark: #7C3AED;
-  --accent-teal: #06B6D4;
-  --accent-teal-light: #22D3EE;
-
-  /* Text Colors */
+  /* Text */
   --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
 
   /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-accent: rgba(139, 92, 246, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(167, 139, 250, 0.2);
+  --border-accent: rgba(247, 37, 133, 0.5);
 
   /* Gradients */
-  --gradient-purple: linear-gradient(135deg, #8B5CF6 0%, #A855F7 50%, #C084FC 100%);
-  --gradient-teal: linear-gradient(135deg, #06B6D4 0%, #22D3EE 100%);
-  --gradient-dark: linear-gradient(180deg, #131316 0%, #0a0a0b 100%);
-
-  /* Shadows */
-  --shadow-glow-purple: 0 0 40px rgba(139, 92, 246, 0.15);
-  --shadow-glow-teal: 0 0 30px rgba(6, 182, 212, 0.15);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-
-  /* Layout */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
+  --gradient-purple: linear-gradient(135deg, #7209b7 0%, #f72585 100%);
+  --gradient-card: linear-gradient(180deg, rgba(30, 27, 75, 0.6) 0%, rgba(10, 10, 15, 0.4) 100%);
 }
 
 /* === BASE STYLES === */
@@ -59,7 +48,15 @@
   }
 
   body {
+    /* "Opticore" Style Background */
     background-color: var(--bg-primary);
+    background-image:
+      radial-gradient(at 0% 0%, rgba(67, 97, 238, 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(247, 37, 133, 0.15) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(114, 9, 183, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(67, 97, 238, 0.15) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(247, 37, 133, 0.15) 0px, transparent 50%);
+    background-attachment: fixed;
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     line-height: 1.6;
@@ -498,12 +495,7 @@
 
 /* === OVERLAYS === */
 .film-grain {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 99;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  display: none;
 }
 
 .glow-vignette {
@@ -511,5 +503,5 @@
   inset: 0;
   pointer-events: none;
   z-index: 10;
-  background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(10, 10, 11, 0.4) 100%);
+  background: radial-gradient(circle at 50% 50%, transparent 60%, rgba(3, 0, 20, 0.5) 100%);
 }
