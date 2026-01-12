@@ -72,28 +72,36 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const speak = (text: string) => {
         if (!text) return;
+        // Clean text for speech
         const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
         if (!cleanText) return;
 
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = "fr-FR";
 
-        utterance.onstart = () => setStatus("speaking");
-        utterance.onend = () => {
-            setStatus("listening");
-            if (mode === "voice" && isMicEnabledRef.current) {
-                restartListening();
-            }
-        };
-        utterance.onerror = () => {
-            setStatus("listening");
-            if (mode === "voice" && isMicEnabledRef.current) {
-                restartListening();
-            }
-        };
+        // Small timeout to ensure cancel is processed
+        setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = "fr-FR";
+            // Mobile sometimes ignores volume/rate, but good to set
+            utterance.rate = 1.1;
 
-        window.speechSynthesis.speak(utterance);
+            utterance.onstart = () => setStatus("speaking");
+            utterance.onend = () => {
+                setStatus("listening");
+                if (mode === "voice" && isMicEnabledRef.current) {
+                    restartListening();
+                }
+            };
+            utterance.onerror = (e) => {
+                console.error("TTS Error", e);
+                setStatus("listening");
+                if (mode === "voice" && isMicEnabledRef.current) {
+                    restartListening();
+                }
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }, 50);
     };
 
     const processMessage = async (text: string, audioBase64?: string) => {
@@ -346,6 +354,11 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     }, [handleCompleteTermination]);
 
     const handleManualInit = () => {
+        // UNLOCK AUDIO CONTEXT & TTS FOR MOBILE
+        // Play a silent sound to wake up the engine
+        const utterance = new SpeechSynthesisUtterance(" ");
+        window.speechSynthesis.speak(utterance);
+
         setShowInitOverlay(false);
         startVoiceSession();
     };
