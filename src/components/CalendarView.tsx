@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Task } from "@/types/task";
 
@@ -146,8 +146,8 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
                                             </p>
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${task.priority === 'high' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
-                                                        task.priority === 'medium' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                                            'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                    task.priority === 'medium' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                                        'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                                     }`}>
                                                     {task.priority === 'high' ? 'Haute' : task.priority === 'medium' ? 'Moyenne' : 'Basse'}
                                                 </span>
