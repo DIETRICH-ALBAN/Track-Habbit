@@ -28,7 +28,12 @@ export async function middleware(request: NextRequest) {
     )
 
     // Refreshing the auth token
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Protect all routes except /auth and static files
+    if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
+        return NextResponse.redirect(new URL('/auth', request.url))
+    }
 
     return supabaseResponse
 }

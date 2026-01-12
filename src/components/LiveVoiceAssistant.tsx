@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
     Loader2, Volume2, Activity, Sparkles, X,
-    Mic, MicOff, Keyboard, MessageSquare, Send
+    Mic, MicOff, Keyboard, MessageSquare, Send,
+    PlayCircle, AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +27,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const [textInput, setTextInput] = useState("");
     const [volume, setVolume] = useState(0);
     const [isMicEnabled, setIsMicEnabled] = useState(true);
+    const [showInitOverlay, setShowInitOverlay] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     const recognitionRef = useRef<any>(null);
     const lastTranscriptRef = useRef<string>("");
@@ -67,27 +70,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         window.speechSynthesis.cancel();
     }, []);
 
-    // Cleanup & Recovery Watcher
-    useEffect(() => {
-        if (mode === "voice" && isMicEnabled && status === "listening") {
-            // Se assurer que la reconnaissance tourne
-            if (!recognitionRef.current) {
-                startVoiceSession();
-            }
-        }
-
-        const checkInterval = setInterval(() => {
-            if (isMicEnabledRef.current && statusRef.current === 'listening' && mode === 'voice') {
-                try { recognitionRef.current?.start(); } catch (e) { }
-            }
-        }, 5000);
-
-        return () => {
-            clearInterval(checkInterval);
-            handleCompleteTermination();
-        };
-    }, [mode, isMicEnabled, status, handleCompleteTermination]);
-
     const speak = (text: string) => {
         if (!text) return;
         const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
@@ -117,9 +99,10 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const processMessage = async (text: string, audioBase64?: string) => {
         if (statusRef.current === "processing") return;
         setStatus("processing");
-        const lastStatus = statusRef.current;
+        setErrorMessage("");
 
         try {
+            console.log("[VoiceAssistant] Sending request to /api/chat...");
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -128,7 +111,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             });
 
             if (res.status === 401) {
-                throw new Error("Session expirée. Veuillez recharger la page.");
+                throw new Error("⚠️ Session expirée. Veuillez vous reconnecter.");
             }
 
             if (!res.ok) {
@@ -137,28 +120,24 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             }
 
             const data = await res.json();
+            console.log("[VoiceAssistant] Response received:", data);
 
             if (data.actions && data.actions.length > 0) onTaskCreated?.();
             speak(data.message);
-            // On clear seulement au succès ou on laisse l'utilisateur corriger ?
-            // Ici on clear car on va parler
             setTranscript("");
             lastTranscriptRef.current = "";
         } catch (error: any) {
-            console.error("[VoiceAssistant] Error:", error.message);
+            console.error("[VoiceAssistant] API Error:", error.message);
             setStatus("error");
-            setTranscript(`Erreur: ${error.message}`);
+            setErrorMessage(error.message);
 
-            // Auto-recovery after 4 seconds
             setTimeout(() => {
                 if (statusRef.current === "error") {
-                    setTranscript("");
-                    lastTranscriptRef.current = "";
+                    setErrorMessage("");
                     setStatus("listening");
-                    // Force restart recognition
                     try { recognitionRef.current?.start(); } catch (e) { }
                 }
-            }, 4000);
+            }, 5000);
         }
     };
 
@@ -182,8 +161,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
                 if (avg > 15) {
                     lastTalkingTimeRef.current = Date.now();
-                } else if (Date.now() - lastTalkingTimeRef.current > 3500) {
-                    // Auto-submit after 3.5s of silence
+                } else if (Date.now() - lastTalkingTimeRef.current > 4000) {
+                    // Auto-submit after 4s of silence
                     if (transcript.trim() && statusRef.current === "listening") handleVoiceSubmit();
                 }
             }
@@ -194,6 +173,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const startVoiceSession = async () => {
         try {
+            console.log("[VoiceAssistant] Starting voice session...");
             setStatus("listening");
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             initRecognition();
@@ -216,13 +196,19 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             };
             mediaRecorderRef.current.start();
         } catch (err) {
+            console.error("[VoiceAssistant] Media error:", err);
             setStatus("error");
+            setErrorMessage("Veuillez autoriser le microphone.");
         }
     };
 
     const initRecognition = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
+        if (!SpeechRecognition) {
+            console.error("[VoiceAssistant] Web Speech API not supported.");
+            setErrorMessage("Navigateur non supporté.");
+            return;
+        }
 
         const recognition = new SpeechRecognition();
         recognition.lang = "fr-FR";
@@ -251,8 +237,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             }
         };
 
-        recognition.start();
-        recognitionRef.current = recognition;
+        recognition.onerror = (e: any) => {
+            console.error("[VoiceAssistant] Recognition error:", e.error);
+            if (e.error === 'not-allowed') setErrorMessage("Microphone bloqué.");
+        };
+
+        try {
+            recognition.start();
+            recognitionRef.current = recognition;
+        } catch (e) {
+            console.error("[VoiceAssistant] Failed to start recognition:", e);
+        }
     };
 
     const restartListening = () => {
@@ -265,8 +260,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const handleVoiceSubmit = () => {
         const final = transcript.trim();
-        console.log("[VoiceAssistant] Submitting:", final);
         if (final) {
+            console.log("[VoiceAssistant] Submitting:", final);
             if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
             if (mediaRecorderRef.current?.state !== 'inactive') {
                 mediaRecorderRef.current!.onstop = null;
@@ -297,6 +292,32 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         }
     };
 
+    // Initialization Logic for Mobile
+    useEffect(() => {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            setShowInitOverlay(true);
+        } else {
+            startVoiceSession();
+        }
+
+        const checkInterval = setInterval(() => {
+            if (isMicEnabledRef.current && statusRef.current === 'listening' && mode === 'voice' && !showInitOverlay) {
+                try { recognitionRef.current?.start(); } catch (e) { }
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(checkInterval);
+            handleCompleteTermination();
+        };
+    }, [handleCompleteTermination]);
+
+    const handleManualInit = () => {
+        setShowInitOverlay(false);
+        startVoiceSession();
+    };
+
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-[#030014]/95 backdrop-blur-3xl lg:relative lg:inset-auto lg:h-full lg:bg-transparent lg:backdrop-blur-none">
             {/* Header Mobile Only */}
@@ -313,6 +334,38 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
                 {/* Visualizer Background */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/10 blur-[120px] rounded-full pointer-events-none" />
+
+                {/* Initialisation Overlay (Mainly for Mobile) */}
+                <AnimatePresence>
+                    {showInitOverlay && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-[110] flex flex-col items-center justify-center bg-[#030014]/80 backdrop-blur-3xl px-8 text-center"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                className="max-w-xs space-y-6"
+                            >
+                                <div className="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto border border-purple-500/20">
+                                    <Volume2 className="text-purple-400" size={32} />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-xl font-bold text-white">Prêt à discuter ?</h3>
+                                    <p className="text-sm text-white/50">Sur mobile, une action manuelle est nécessaire pour activer le micro.</p>
+                                </div>
+                                <button
+                                    onClick={handleManualInit}
+                                    className="btn-primary w-full h-14 rounded-2xl text-lg font-bold"
+                                >
+                                    Activer l'Assistant
+                                </button>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Main Interaction Area */}
                 <div className="relative w-full max-w-lg flex flex-col items-center gap-12 z-10">
@@ -347,38 +400,54 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                     whileTap={{ scale: 0.95 }}
                                     className={`w-28 h-28 rounded-3xl border-2 flex flex-col items-center justify-center bg-white/[0.03] backdrop-blur-xl transition-all duration-500 ${status === 'listening' ? (volume > 0.05 ? 'border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'border-purple-500/30') :
                                             status === 'speaking' ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' :
-                                                'border-white/10'
+                                                status === 'error' ? 'border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.3)]' :
+                                                    'border-white/10'
                                         }`}>
                                     {status === 'processing' ? <Loader2 className="w-10 h-10 text-purple-500 animate-spin" /> :
                                         status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-pulse" /> :
-                                            status === 'error' ? <X size={40} className="text-rose-500" /> :
+                                            status === 'error' ? <AlertCircle size={40} className="text-rose-500 animate-bounce" /> :
                                                 <Activity size={40} className={volume > 0.05 ? "text-purple-300" : "text-purple-500/50"} />}
                                     {status === 'listening' && volume <= 0.05 && (
-                                        <span className="text-[10px] text-white/20 mt-1 uppercase font-bold">Silence</span>
+                                        <span className="text-[10px] text-white/20 mt-1 uppercase font-bold tracking-widest">Silence</span>
+                                    )}
+                                    {status === 'error' && (
+                                        <span className="text-[10px] text-rose-500 mt-1 uppercase font-bold tracking-widest">Relancer</span>
                                     )}
                                 </motion.div>
                             </div>
                         </div>
                     )}
 
-                    {/* Transcriptions / Text Output */}
+                    {/* Transcriptions / Text Output / Errors */}
                     <div className="w-full text-center space-y-6">
-                        <div className="space-y-2">
-                            <h2 className="text-2xl font-bold text-white tracking-tight">
-                                {status === 'listening' ? "Je vous écoute..." : status === 'processing' ? "Analyse en cours..." : status === 'speaking' ? "Réponse Vocale" : "Assistant Prêt"}
+                        <div className="space-y-4">
+                            <h2 className={`text-2xl font-bold tracking-tight transition-colors duration-500 ${status === 'error' ? 'text-rose-400' : 'text-white'}`}>
+                                {status === 'listening' ? "Je vous écoute..." :
+                                    status === 'processing' ? "Analyse en cours..." :
+                                        status === 'speaking' ? "Réponse Vocale" :
+                                            status === 'error' ? "Oups ! Un souci technique" :
+                                                "Assistant Prêt"}
                             </h2>
-                            <div className="min-h-[80px] p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
-                                <p className="text-sm text-white/70 italic leading-relaxed">
-                                    {mode === "voice" ? (
-                                        <>
-                                            <span className="text-white/40">{lastTranscriptRef.current}</span>
-                                            <span className="text-white font-medium">{transcript}</span>
-                                            {!lastTranscriptRef.current && !transcript && "Dites quelque chose..."}
-                                        </>
-                                    ) : (
-                                        "Tapez votre demande ci-dessous..."
-                                    )}
-                                </p>
+
+                            <div className={`min-h-[100px] p-6 rounded-2xl bg-white/[0.03] border backdrop-blur-md transition-all duration-500 ${status === 'error' ? 'border-rose-500/30' : 'border-white/10'}`}>
+                                {status === 'error' ? (
+                                    <div className="space-y-3">
+                                        <p className="text-rose-400 font-medium">{errorMessage}</p>
+                                        <p className="text-xs text-white/30 italic">Essayez de recharger la page si le problème persiste.</p>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-white/70 italic leading-relaxed">
+                                        {mode === "voice" ? (
+                                            <>
+                                                <span className="text-white/40">{lastTranscriptRef.current}</span>
+                                                <span className="text-white font-medium">{transcript}</span>
+                                                {!lastTranscriptRef.current && !transcript && "Dites quelque chose..."}
+                                            </>
+                                        ) : (
+                                            "Tapez votre demande ci-dessous..."
+                                        )}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -418,8 +487,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                         placeholder="Comment puis-je vous aider ?"
                                         className="flex-1 h-14 bg-white/[0.03] border border-white/10 rounded-2xl px-6 text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 transition-all"
                                     />
-                                    <button type="submit" className="w-14 h-14 rounded-2xl bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/20 transition-all active:scale-95">
-                                        <Send size={24} />
+                                    <button type="submit" disabled={status === 'processing'} className="w-14 h-14 rounded-2xl bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-30">
+                                        {status === 'processing' ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} />}
                                     </button>
                                     <button
                                         type="button"
