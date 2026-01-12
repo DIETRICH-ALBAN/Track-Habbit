@@ -277,15 +277,20 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const handleVoiceSubmit = () => {
         const final = transcript.trim();
-        if (final) {
-            console.log("[VoiceAssistant] Submitting:", final);
-            if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
-            if (mediaRecorderRef.current?.state !== 'inactive') {
-                mediaRecorderRef.current!.onstop = null;
-                mediaRecorderRef.current!.stop();
-            }
-            processMessage(final);
+        if (!final) {
+            setErrorMessage("Je n'ai rien entendu 😕");
+            setTimeout(() => setErrorMessage(""), 2000);
+            restartListening();
+            return;
         }
+
+        console.log("[VoiceAssistant] Submitting:", final);
+        if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+        if (mediaRecorderRef.current?.state !== 'inactive') {
+            mediaRecorderRef.current!.onstop = null;
+            mediaRecorderRef.current!.stop();
+        }
+        processMessage(final);
     };
 
     const handleTextSubmit = (e?: React.FormEvent) => {
@@ -480,7 +485,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
                                     <button
                                         onClick={handleVoiceSubmit}
-                                        disabled={!transcript.trim() || status === 'processing'}
+                                        disabled={status === 'processing'}
                                         className="btn-primary flex-1 h-14 max-w-[200px] disabled:opacity-30"
                                     >
                                         {status === 'processing' ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
