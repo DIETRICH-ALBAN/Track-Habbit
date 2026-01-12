@@ -28,57 +28,191 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
-    const autoSubmitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const lastTalkingTimeRef = useRef<number>(Date.now());
     const statusRef = useRef(status);
-    // Immediate state ref to prevent async race conditions
+    const isActiveRef = useRef(isActive);
     const shouldIdentifyRef = useRef(false);
+    const lastTalkingTimeRef = useRef<number>(Date.now());
+
+    // Pour l'audio natif fallback
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
+    useEffect(() => { statusRef.current = status; }, [status]);
 
     useEffect(() => {
-        shouldIdentifyRef.current = isActive;
         isActiveRef.current = isActive;
+        shouldIdentifyRef.current = isActive;
     }, [isActive]);
 
-    // Robust Cleanup
+    // Robust Cleanup & Auto-start
     useEffect(() => {
-        // Auto-start on mount
         startSession();
 
         return () => {
-            shouldIdentifyRef.current = false; // Kill switch
-            isActiveRef.current = false;
-
-            if (recognitionRef.current) {
-                recognitionRef.current.onend = null; // Prevent restart
-                recognitionRef.current.stop();
-            }
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                mediaRecorderRef.current.stop();
-            }
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
-            if (audioContextRef.current) {
-                audioContextRef.current.close();
-            }
-            window.speechSynthesis.cancel();
+            handleCompleteTermination();
         };
     }, []);
 
-    const stopSession = () => {
+    const handleCompleteTermination = () => {
         shouldIdentifyRef.current = false;
-        setIsActive(false);
-        setStatus("idle");
-        window.speechSynthesis.cancel();
+        isActiveRef.current = false;
 
         if (recognitionRef.current) {
-            recognitionRef.current.onend = null; // Prevent restart loop
-            recognitionRef.current.stop();
+            recognitionRef.current.onend = null;
+            recognitionRef.current.onerror = null;
+            recognitionRef.current.onresult = null;
+            recognitionRef.current.onstart = null;
+            try {
+                recognitionRef.current.abort();
+            } catch (e) { }
         }
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
+        recognitionRef.current = null;
 
+        if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.onstop = null;
+            if (mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+        }
+        mediaRecorderRef.current = null;
+
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+            audioContextRef.current.close().catch(() => { });
+        }
+        window.speechSynthesis.cancel();
+    };
+
+    const speak = (text: string) => {
+        if (!text) return;
+        const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
+        if (!cleanText) return;
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = "fr-FR";
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+
+        utterance.onstart = () => setStatus("speaking");
+        utterance.onend = () => {
+            if (shouldIdentifyRef.current) {
+                setStatus("listening");
+                restartListening();
+            }
+        };
+        utterance.onerror = () => {
+            if (shouldIdentifyRef.current) {
+                setStatus("listening");
+                restartListening();
+            }
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const processText = async (text: string, audioBase64?: string) => {
+        if (statusRef.current === "processing") return;
+        if (!shouldIdentifyRef.current) return;
+
+        setStatus("processing");
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, audio: audioBase64 }),
+            });
+
+            if (!res.ok) throw new Error("Erreur serveur");
+            const data = await res.json();
+
+            if (data.actions && data.actions.length > 0) onTaskCreated?.();
+            speak(data.message);
+        } catch (error) {
+            console.error(error);
+            setStatus("error");
+            if (shouldIdentifyRef.current) {
+                setTimeout(() => setStatus("listening"), 3000);
+            }
+        }
+    };
+
+    const startAudioAnalysis = (stream: MediaStream) => {
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (audioContextRef.current.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+
+        const source = audioContextRef.current.createMediaStreamSource(stream);
+        analyserRef.current = audioContextRef.current.createAnalyser();
+        analyserRef.current.fftSize = 256;
+        source.connect(analyserRef.current);
+
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const update = () => {
+            if (analyserRef.current && statusRef.current === "listening" && shouldIdentifyRef.current) {
+                analyserRef.current.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+                const avg = sum / bufferLength;
+                setVolume(avg / 128);
+
+                // Auto-submit on silence (2 seconds)
+                if (avg > 15) {
+                    lastTalkingTimeRef.current = Date.now();
+                } else if (Date.now() - lastTalkingTimeRef.current > 2500) {
+                    if (lastTranscriptRef.current.trim() && statusRef.current === "listening") {
+                        handleSubmit();
+                    }
+                }
+            }
+            if (shouldIdentifyRef.current) {
+                animationFrameRef.current = requestAnimationFrame(update);
+            }
+        };
+        update();
+    };
+
+    const startSession = async () => {
+        try {
+            setIsActive(true);
+            setStatus("listening");
+            setTranscript("");
+            lastTranscriptRef.current = "";
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            initRecognition();
+            startAudioAnalysis(stream);
+
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+            mediaRecorderRef.current.onstop = async () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                audioChunksRef.current = [];
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => {
+                    const base64 = reader.result as string;
+                    if (!lastTranscriptRef.current.trim() && shouldIdentifyRef.current) {
+                        processText("", base64.split(',')[1]);
+                    }
+                };
+            };
+            mediaRecorderRef.current.start();
+
+        } catch (err) {
+            console.error(err);
+            setStatus("error");
+        }
+    };
+
+    const stopSession = () => {
+        handleCompleteTermination();
         onClose?.();
     };
 
@@ -106,30 +240,45 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         };
 
         recognition.onend = () => {
-            // Only restart if we are explicitly still active
             if (shouldIdentifyRef.current && statusRef.current === "listening") {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    console.error("Restart error:", e);
-                }
+                try { recognition.start(); } catch (e) { }
             }
         };
 
         try {
             recognition.start();
             recognitionRef.current = recognition;
-        } catch (e) {
-            console.error("Start error:", e);
+        } catch (e) { }
+    };
+
+    const restartListening = () => {
+        if (!shouldIdentifyRef.current) return;
+        lastTranscriptRef.current = "";
+        setTranscript("");
+        try { recognitionRef.current?.start(); } catch (e) { }
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "inactive") {
+            mediaRecorderRef.current.start();
+        }
+    };
+
+    const handleSubmit = () => {
+        const text = transcript.trim() || lastTranscriptRef.current.trim();
+        if (text) {
+            if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            processText(text);
+        } else if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            mediaRecorderRef.current.stop();
         }
     };
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-transparent px-6">
-            {/* Background Neural Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/5 blur-[120px] rounded-full pointer-events-none" />
 
-            {/* Neural Visualizer UI */}
+            {/* Visualizer */}
             <div className="relative w-full max-w-md aspect-square flex items-center justify-center z-10">
                 <motion.div
                     animate={{
@@ -140,7 +289,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     className="absolute inset-0 bg-gradient-to-br from-[var(--accent-purple)]/10 to-[var(--accent-teal)]/10 rounded-full blur-[60px]"
                 />
 
-                {/* Animated Audio Lines */}
                 <div className="flex items-center gap-1.5 h-40">
                     {[...Array(24)].map((_, i) => (
                         <motion.div
@@ -149,31 +297,30 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                 height: status === 'listening' ? [12, 12 + (volume * 140 * (0.5 + Math.random() * 0.5)), 12] : 8
                             }}
                             className={`w-1 rounded-full ${status === 'processing' ? 'bg-[var(--accent-purple)] animate-pulse' :
-                                status === 'speaking' ? 'bg-[var(--accent-teal)]' :
+                                status === 'speaking' ? 'bg-cyan-400' :
                                     'bg-[var(--accent-purple)]'
                                 }`}
                         />
                     ))}
                 </div>
 
-                {/* Status Indicator Overlays */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className={`w-28 h-28 rounded-3xl border-2 flex items-center justify-center bg-[var(--bg-card)]/80 backdrop-blur-xl shadow-2xl transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-purple)] shadow-[var(--accent-purple)]/20' :
-                            status === 'speaking' ? 'border-[var(--accent-teal)] shadow-[var(--accent-teal)]/20' :
+                            status === 'speaking' ? 'border-cyan-400 shadow-cyan-400/20' :
                                 'border-[var(--border-subtle)]'
                             }`}
                     >
                         {status === 'processing' ? <Loader2 className="w-10 h-10 text-[var(--accent-purple)] animate-spin" /> :
-                            status === 'speaking' ? <div className="text-[var(--accent-teal)]"><Volume2 size={40} className="animate-pulse" /></div> :
+                            status === 'speaking' ? <div className="text-cyan-400"><Volume2 size={40} className="animate-pulse" /></div> :
                                 <div className="text-[var(--accent-purple)]"><Activity size={40} /></div>}
                     </motion.div>
                 </div>
             </div>
 
-            {/* Controls and Transcript */}
+            {/* Controls */}
             <div className="w-full max-w-2xl mt-12 space-y-8 z-20">
                 <div className="text-center space-y-4">
                     <div className="inline-flex items-center gap-2 badge px-4 py-1.5 border-[var(--border-subtle)] bg-[var(--bg-elevated)]">

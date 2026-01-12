@@ -46,7 +46,7 @@ export default function Sidebar({
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        window.location.href = "/";
+        window.location.href = "/auth";
     };
 
     const navItems = [
@@ -61,48 +61,46 @@ export default function Sidebar({
     // Mobile Bottom Navigation
     if (isMobile) {
         return (
-            <div className="fixed bottom-4 left-4 right-4 h-16 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl flex items-center justify-around px-2 z-[100]">
+            <div className="fixed bottom-6 left-6 right-6 h-16 bg-[#030014]/80 backdrop-blur-2xl border border-white/10 rounded-2xl flex items-center justify-around px-2 z-[100] shadow-[0_-8px_30px_rgba(0,0,0,0.5)]">
                 {navItems.slice(0, 2).map((item, i) => (
                     <button
                         key={i}
                         onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-xl transition-all",
+                            "flex flex-col items-center gap-1 p-2 transition-all",
                             item.active
-                                ? "text-[var(--accent-purple-light)] bg-[var(--accent-purple)]/10"
-                                : "text-[var(--text-muted)]"
+                                ? "text-cyan-400"
+                                : "text-white/40"
                         )}
                     >
-                        <item.icon size={20} />
-                        <span className="text-[10px] font-medium">{item.label}</span>
+                        <item.icon size={20} className={cn(item.active && "drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]")} />
                     </button>
                 ))}
 
                 {/* Central AI Trigger */}
                 <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={onActivateAI}
-                    className="w-14 h-14 -mt-8 bg-[var(--gradient-purple)] rounded-2xl flex items-center justify-center shadow-lg relative"
-                    style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}
+                    className="w-14 h-14 -mt-10 rounded-2xl flex items-center justify-center relative overflow-hidden group shadow-[0_0_20px_rgba(157,78,221,0.3)]"
                 >
-                    <Sparkles size={24} className="text-white" />
-                    <div className="absolute inset-0 rounded-2xl animate-pulse-glow" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#9d4edd] via-[#f72585] to-[#4361ee] animate-gradient-xy" />
+                    <Sparkles size={24} className="text-white relative z-10" />
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </motion.button>
 
-                {navItems.slice(2, 4).map((item, i) => (
+                {navItems.slice(3, 5).map((item, i) => (
                     <button
                         key={i}
                         onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 rounded-xl transition-all",
+                            "flex flex-col items-center gap-1 p-2 transition-all",
                             item.active
-                                ? "text-[var(--accent-purple-light)] bg-[var(--accent-purple)]/10"
-                                : "text-[var(--text-muted)]"
+                                ? "text-cyan-400"
+                                : "text-white/40"
                         )}
                     >
-                        <item.icon size={20} />
-                        <span className="text-[10px] font-medium">{item.label}</span>
+                        <item.icon size={20} className={cn(item.active && "drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]")} />
                     </button>
                 ))}
             </div>
@@ -127,12 +125,12 @@ export default function Sidebar({
                             exit={{ opacity: 0, x: -10 }}
                             className="flex items-center gap-3"
                         >
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(157,78,221,0.4)]" style={{ background: 'linear-gradient(135deg, #9d4edd 0%, #f72585 100%)' }}>
                                 <Sparkles size={18} className="text-white" />
                             </div>
                             <div>
-                                <span className="font-semibold text-[15px]">Track Habbit</span>
-                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">AI-Powered</p>
+                                <span className="font-bold text-[15px] tracking-tight">Track Habbit</span>
+                                <p className="text-[9px] text-cyan-400/80 font-bold uppercase tracking-[0.2em]">Liquid AI</p>
                             </div>
                         </motion.div>
                     )}
