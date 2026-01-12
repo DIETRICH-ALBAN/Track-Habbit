@@ -59,7 +59,7 @@
   }
 
   body {
-    background-color: transparent;
+    background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     line-height: 1.6;

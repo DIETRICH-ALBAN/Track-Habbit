@@ -100,7 +100,8 @@ export default function Home() {
   const efficiency = todayTasks.length > 0 ? Math.round((todayDone.length / todayTasks.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-transparent relative z-10">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
+      <script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.32/build/spline-viewer.js"></script>
       {/* Main Layout Container */}
       <div className="flex flex-col md:flex-row min-h-screen">
 
@@ -218,7 +219,13 @@ export default function Home() {
                         className="relative z-10 w-full h-44 mb-6 cursor-pointer group"
                         onClick={() => setIsAIVisualMode(true)}
                       >
-                        <NeuralSphere active={isAIVisualMode} />
+                        <div className="w-full h-full transform scale-125">
+                          {/* @ts-ignore */}
+                          <spline-viewer
+                            url="https://prod.spline.design/S8ExRYmCK3ZlAx8n/scene.splinecode"
+                            loading-anim-type="none"
+                          />
+                        </div>
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
                           <span className="badge">AI Online</span>
                         </div>
