@@ -33,7 +33,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const lastTalkingTimeRef = useRef<number>(Date.now());
     const statusRef = useRef(status);
     const isActiveRef = useRef(isActive);
-    const [shake, setShake] = useState(false);
 
     // Pour l'audio natif
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -237,76 +236,102 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     }, []);
 
     return (
-        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
-            {/* Immersive Neural Visualizer */}
-            <div className="relative w-full max-w-lg aspect-square flex items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-[var(--bg-primary)] px-6">
+            {/* Background Neural Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/5 blur-[120px] rounded-full pointer-events-none" />
+
+            {/* Neural Visualizer UI */}
+            <div className="relative w-full max-w-md aspect-square flex items-center justify-center z-10">
                 <motion.div
                     animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [0.1, 0.2, 0.1],
-                        borderRadius: ["40%", "50%", "40%"]
+                        scale: [1, 1.15, 1],
+                        opacity: [0.3, 0.4, 0.3],
                     }}
-                    transition={{ duration: 4, repeat: Infinity }}
-                    className="absolute inset-0 bg-primary/20 blur-[100px]"
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-0 bg-gradient-to-br from-[var(--accent-purple)]/10 to-[var(--accent-teal)]/10 rounded-full blur-[60px]"
                 />
 
-                {/* Audio Waves Simulation */}
-                <div className="flex items-center gap-1 h-32">
-                    {[...Array(20)].map((_, i) => (
+                {/* Animated Audio Lines */}
+                <div className="flex items-center gap-1.5 h-40">
+                    {[...Array(24)].map((_, i) => (
                         <motion.div
                             key={i}
                             animate={{
-                                height: status === 'listening' ? [10, 10 + (volume * 100 * Math.random()), 10] : 4
+                                height: status === 'listening' ? [12, 12 + (volume * 140 * (0.5 + Math.random() * 0.5)), 12] : 8
                             }}
-                            className={`w-1 rounded-full ${status === 'processing' ? 'bg-primary/40 animate-pulse' : 'bg-primary'}`}
+                            className={`w-1 rounded-full ${status === 'processing' ? 'bg-[var(--accent-purple)] animate-pulse' :
+                                    status === 'speaking' ? 'bg-[var(--accent-teal)]' :
+                                        'bg-[var(--accent-purple)]'
+                                }`}
                         />
                     ))}
                 </div>
 
-                {/* Central Status Node */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                    <div className={`w-24 h-24 rounded-full border-2 flex items-center justify-center transition-all duration-500 bg-[#020203] shadow-[0_0_50px_rgba(59,130,246,0.2)] ${status === 'listening' ? 'border-primary' : 'border-white/10'}`}>
-                        {status === 'processing' ? <Loader2 className="w-8 h-8 text-primary animate-spin" /> :
-                            status === 'speaking' ? <Volume2 className="w-8 h-8 text-primary animate-pulse" /> :
-                                <Activity className="w-8 h-8 text-primary" />}
+                {/* Status Indicator Overlays */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className={`w-28 h-28 rounded-3xl border-2 flex items-center justify-center bg-[var(--bg-card)]/80 backdrop-blur-xl shadow-2xl transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-purple)] shadow-[var(--accent-purple)]/20' :
+                                status === 'speaking' ? 'border-[var(--accent-teal)] shadow-[var(--accent-teal)]/20' :
+                                    'border-[var(--border-subtle)]'
+                            }`}
+                    >
+                        {status === 'processing' ? <Loader2 className="w-10 h-10 text-[var(--accent-purple)] animate-spin" /> :
+                            status === 'speaking' ? <div className="text-[var(--accent-teal)]"><Volume2 size={40} className="animate-pulse" /></div> :
+                                <div className="text-[var(--accent-purple)]"><Activity size={40} /></div>}
+                    </motion.div>
+                </div>
+            </div>
+
+            {/* Controls and Transcript */}
+            <div className="w-full max-w-2xl mt-12 space-y-8 z-20">
+                <div className="text-center space-y-4">
+                    <div className="inline-flex items-center gap-2 badge px-4 py-1.5 border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
+                        <span className={`w-2 h-2 rounded-full ${status === 'listening' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+                        <span className="text-[10px] uppercase tracking-[0.2em] font-bold">
+                            {status === 'listening' ? "Live System Active" : "Neural Link Established"}
+                        </span>
+                    </div>
+
+                    <div>
+                        <h2 className="heading-display text-3xl">
+                            {status === 'listening' ? "Je vous écoute..." :
+                                status === 'processing' ? "Analyse Neurone" :
+                                    status === 'speaking' ? "Système Vocal" : "Assistant Vocal"}
+                            <span className="heading-serif"> .</span>
+                        </h2>
+                        <div className="mt-4 min-h-[60px] max-h-[120px] overflow-y-auto px-6 py-4 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl">
+                            <p className="text-[var(--text-secondary)] text-sm italic opacity-80 leading-relaxed font-medium">
+                                {transcript || "Commencez à parler pour que l'IA puisse vous aider..."}
+                            </p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Transcript & Input */}
-            <div className="w-full max-w-xl mt-8 flex flex-col items-center gap-6 px-4">
-                <div className="text-center">
-                    <p className="hero-title text-2xl text-white mb-2">
-                        {status === 'listening' ? "Dites quelque chose..." :
-                            status === 'processing' ? "Analyse neuronale..." :
-                                status === 'speaking' ? "Réponse en cours" : "Lien établi"}
-                    </p>
-                    <p className="text-white/40 text-sm font-medium tracking-wide max-h-24 overflow-y-auto no-scrollbar italic">
-                        {transcript || "..."}
-                    </p>
-                </div>
-
-                <div className="flex gap-4 w-full justify-center">
+                <div className="flex gap-4 justify-center">
                     <button
                         onClick={handleSubmit}
-                        className="px-8 py-4 bg-primary rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 active:scale-95 transition-all shadow-[0_0_25px_rgba(59,130,246,0.3)]"
+                        disabled={!transcript.trim() && !lastTranscriptRef.current.trim()}
+                        className="btn-primary min-w-[200px] h-14 text-base disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                        Envoyer
+                        <Sparkles size={18} />
+                        <span>Envoyer</span>
                     </button>
+
                     <button
                         onClick={stopSession}
-                        className="p-4 bg-white/5 border border-white/10 rounded-2xl text-white/40 hover:text-white hover:bg-red-500/20 transition-all"
+                        className="btn-secondary w-14 h-14 p-0 flex items-center justify-center border-rose-500/20 text-rose-400 hover:bg-rose-500/10"
                     >
-                        <PhoneOff className="w-6 h-6" />
+                        <X size={24} />
                     </button>
                 </div>
-            </div>
 
-            {/* Background Data Stream (Visual only) */}
-            <div className="absolute inset-0 -z-10 opacity-5 pointer-events-none select-none overflow-hidden text-[8px] font-mono leading-none text-primary p-2 flex flex-wrap gap-1">
-                {[...Array(1000)].map((_, i) => (
-                    <span key={i}>{Math.random() > 0.5 ? '1' : '0'}</span>
-                ))}
+                <div className="text-[10px] text-[var(--text-muted)] text-center uppercase tracking-widest opacity-50 flex items-center justify-center gap-2">
+                    <span className="flex-1 h-px bg-[var(--border-subtle)]" />
+                    Neural Processing Core V2.0.0
+                    <span className="flex-1 h-px bg-[var(--border-subtle)]" />
+                </div>
             </div>
         </div>
     );

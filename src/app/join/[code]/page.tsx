@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { Loader2, Users, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Users, CheckCircle, XCircle, Sparkles } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import NotificationPanel from "@/components/NotificationPanel";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function JoinTeamPage() {
     const params = useParams();
@@ -72,7 +72,7 @@ export default function JoinTeamPage() {
     }, [params.code, supabase, router]);
 
     return (
-        <div className="min-h-screen flex flex-col md:flex-row bg-[#050505] text-white font-sans overflow-x-hidden pb-20 md:pb-0">
+        <div className="min-h-screen flex flex-col md:flex-row bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans overflow-x-hidden pb-20 md:pb-0">
             {/* Notification Panel Overlay */}
             <AnimatePresence>
                 {showNotifications && (
@@ -85,47 +85,74 @@ export default function JoinTeamPage() {
                 showNotifications={showNotifications}
             />
 
-            <main className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-md glass-morphism p-8 text-center space-y-6">
+            <main className="flex-1 flex items-center justify-center p-6 md:pl-[260px]">
+                {/* Background Decoration */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[var(--accent-purple)]/10 blur-[120px] rounded-full pointer-events-none" />
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="w-full max-w-md card p-10 text-center space-y-8 relative z-10"
+                >
                     {status === "loading" && (
-                        <>
-                            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
-                            <h1 className="text-2xl font-bold font-outfit">Rejointure de l&apos;équipe...</h1>
-                        </>
+                        <div className="space-y-6">
+                            <div className="w-20 h-20 bg-[var(--bg-elevated)] rounded-2xl flex items-center justify-center mx-auto border border-[var(--border-subtle)]">
+                                <Loader2 className="w-10 h-10 text-[var(--accent-purple)] animate-spin" />
+                            </div>
+                            <div>
+                                <h1 className="heading-display text-2xl">Rejointure de l&apos;équipe...</h1>
+                                <p className="text-[var(--text-muted)] mt-2">Nous préparons votre espace collaboratif.</p>
+                            </div>
+                        </div>
                     )}
 
                     {status === "success" && (
-                        <>
-                            <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                                <CheckCircle className="w-12 h-12 text-green-500" />
+                        <div className="space-y-6">
+                            <div className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto shadow-2xl" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                                <CheckCircle className="w-12 h-12 text-white" />
                             </div>
-                            <h1 className="text-2xl font-bold font-outfit">Félicitations !</h1>
-                            <p className="text-white/60">Vous avez rejoint l&apos;équipe <span className="text-white font-bold">{teamName}</span>.</p>
-                            <button
-                                onClick={() => window.location.href = "/teams"}
-                                className="w-full bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg"
-                            >
-                                Accéder à mes équipes
-                            </button>
-                        </>
+                            <div>
+                                <h1 className="heading-display text-3xl">Bienvenue !</h1>
+                                <p className="text-[var(--text-muted)] mt-2">Vous avez rejoint l&apos;équipe <span className="text-[var(--text-primary)] font-bold">{teamName}</span>.</p>
+                            </div>
+                            <div className="pt-4">
+                                <button
+                                    onClick={() => window.location.href = "/teams"}
+                                    className="btn-primary w-full py-4 text-lg"
+                                >
+                                    <span>Accéder à mes équipes</span>
+                                </button>
+                            </div>
+                        </div>
                     )}
 
                     {status === "error" && (
-                        <>
-                            <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
-                                <XCircle className="w-12 h-12 text-red-500" />
+                        <div className="space-y-6">
+                            <div className="w-20 h-20 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto">
+                                <XCircle className="w-10 h-10 text-rose-500" />
                             </div>
-                            <h1 className="text-2xl font-bold font-outfit">Oups !</h1>
-                            <p className="text-white/60">{errorMsg}</p>
-                            <button
-                                onClick={() => window.location.href = "/"}
-                                className="w-full bg-white/5 hover:bg-white/10 py-4 rounded-xl font-bold transition-all border border-white/10"
-                            >
-                                Retour à l&apos;accueil
-                            </button>
-                        </>
+                            <div>
+                                <h1 className="heading-display text-2xl">Oups !</h1>
+                                <p className="text-[var(--text-muted)] mt-2 px-4">{errorMsg}</p>
+                            </div>
+                            <div className="pt-4">
+                                <button
+                                    onClick={() => window.location.href = "/"}
+                                    className="btn-secondary w-full py-4 border-rose-500/20 text-rose-400 hover:bg-rose-500/5"
+                                >
+                                    <span>Retour à l&apos;accueil</span>
+                                </button>
+                            </div>
+                        </div>
                     )}
-                </div>
+
+                    {status === "loading" && (
+                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest pt-4 opacity-50">
+                            Propulsé par Gemini 2.0
+                        </p>
+                    )}
+                </motion.div>
             </main>
         </div>
     );
