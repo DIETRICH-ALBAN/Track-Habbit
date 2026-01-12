@@ -42,17 +42,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     useEffect(() => { statusRef.current = status; }, [status]);
     useEffect(() => { isMicEnabledRef.current = isMicEnabled; }, [isMicEnabled]);
 
-    // Handle Cleanup
-    useEffect(() => {
-        if (mode === "voice" && isMicEnabled) {
-            startVoiceSession();
-        }
-        return () => {
-            handleCompleteTermination();
-        };
-    }, []);
-
-    const handleCompleteTermination = () => {
+    const handleCompleteTermination = useCallback(() => {
         setIsMicEnabled(false);
         isMicEnabledRef.current = false;
 
@@ -75,7 +65,28 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             audioContextRef.current.close().catch(() => { });
         }
         window.speechSynthesis.cancel();
-    };
+    }, []);
+
+    // Cleanup & Recovery Watcher
+    useEffect(() => {
+        if (mode === "voice" && isMicEnabled && status === "listening") {
+            // Se assurer que la reconnaissance tourne
+            if (!recognitionRef.current) {
+                startVoiceSession();
+            }
+        }
+
+        const checkInterval = setInterval(() => {
+            if (isMicEnabledRef.current && statusRef.current === 'listening' && mode === 'voice') {
+                try { recognitionRef.current?.start(); } catch (e) { }
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(checkInterval);
+            handleCompleteTermination();
+        };
+    }, [mode, isMicEnabled, status, handleCompleteTermination]);
 
     const speak = (text: string) => {
         if (!text) return;
@@ -106,25 +117,48 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const processMessage = async (text: string, audioBase64?: string) => {
         if (statusRef.current === "processing") return;
         setStatus("processing");
+        const lastStatus = statusRef.current;
 
         try {
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: text, audio: audioBase64 }),
+                credentials: 'include'
             });
 
-            if (!res.ok) throw new Error("Erreur");
+            if (res.status === 401) {
+                throw new Error("Session expirée. Veuillez recharger la page.");
+            }
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Erreur serveur (${res.status})`);
+            }
+
             const data = await res.json();
 
             if (data.actions && data.actions.length > 0) onTaskCreated?.();
             speak(data.message);
+            // On clear seulement au succès ou on laisse l'utilisateur corriger ?
+            // Ici on clear car on va parler
             setTranscript("");
             lastTranscriptRef.current = "";
-        } catch (error) {
-            console.error(error);
+        } catch (error: any) {
+            console.error("[VoiceAssistant] Error:", error.message);
             setStatus("error");
-            setTimeout(() => setStatus("listening"), 3000);
+            setTranscript(`Erreur: ${error.message}`);
+
+            // Auto-recovery after 4 seconds
+            setTimeout(() => {
+                if (statusRef.current === "error") {
+                    setTranscript("");
+                    lastTranscriptRef.current = "";
+                    setStatus("listening");
+                    // Force restart recognition
+                    try { recognitionRef.current?.start(); } catch (e) { }
+                }
+            }, 4000);
         }
     };
 
@@ -302,9 +336,26 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                 ))}
                             </div>
 
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                <motion.div className={`w-24 h-24 rounded-3xl border-2 flex items-center justify-center bg-white/[0.03] backdrop-blur-xl transition-all duration-500 ${status === 'listening' ? 'border-purple-500/50' : status === 'speaking' ? 'border-cyan-400' : 'border-white/10'}`}>
-                                    {status === 'processing' ? <Loader2 className="w-10 h-10 text-purple-500 animate-spin" /> : status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-pulse" /> : <Activity size={40} className="text-purple-400" />}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer" onClick={() => {
+                                if (status === 'error' || status === 'idle') {
+                                    setStatus('listening');
+                                    restartListening();
+                                }
+                            }}>
+                                <motion.div
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    className={`w-28 h-28 rounded-3xl border-2 flex flex-col items-center justify-center bg-white/[0.03] backdrop-blur-xl transition-all duration-500 ${status === 'listening' ? (volume > 0.05 ? 'border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'border-purple-500/30') :
+                                            status === 'speaking' ? 'border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.4)]' :
+                                                'border-white/10'
+                                        }`}>
+                                    {status === 'processing' ? <Loader2 className="w-10 h-10 text-purple-500 animate-spin" /> :
+                                        status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-pulse" /> :
+                                            status === 'error' ? <X size={40} className="text-rose-500" /> :
+                                                <Activity size={40} className={volume > 0.05 ? "text-purple-300" : "text-purple-500/50"} />}
+                                    {status === 'listening' && volume <= 0.05 && (
+                                        <span className="text-[10px] text-white/20 mt-1 uppercase font-bold">Silence</span>
+                                    )}
                                 </motion.div>
                             </div>
                         </div>
@@ -344,11 +395,11 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
                                     <button
                                         onClick={handleVoiceSubmit}
-                                        disabled={!transcript.trim()}
+                                        disabled={!transcript.trim() || status === 'processing'}
                                         className="btn-primary flex-1 h-14 max-w-[200px] disabled:opacity-30"
                                     >
-                                        <Sparkles size={18} />
-                                        <span>Envoyer</span>
+                                        {status === 'processing' ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                                        <span>{status === 'processing' ? "Analyse..." : "Envoyer"}</span>
                                     </button>
 
                                     <button
