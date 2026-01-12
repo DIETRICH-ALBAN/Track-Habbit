@@ -111,7 +111,9 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             });
 
             if (res.status === 401) {
-                throw new Error("⚠️ Session expirée. Veuillez vous reconnecter.");
+                // Hard redirect if session is dead
+                window.location.href = "/auth";
+                throw new Error("Session expirée. Redirection...");
             }
 
             if (!res.ok) {
@@ -249,8 +251,16 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
         recognition.onend = () => {
             console.log("[VoiceAssistant] Recognition OFF");
+            // Anti-Beep Loop: Delay restart slightly
             if (isMicEnabledRef.current && statusRef.current === "listening") {
-                try { recognition.start(); } catch (e) { }
+                const timeSinceLastStart = Date.now() - lastTalkingTimeRef.current;
+                const delay = timeSinceLastStart < 1000 ? 1000 : 300; // If it died instantly, wait longer
+
+                setTimeout(() => {
+                    if (isMicEnabledRef.current && statusRef.current === "listening") {
+                        try { recognition.start(); } catch (e) { }
+                    }
+                }, delay);
             }
         };
 
