@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Loader2, Volume2, Activity, Sparkles, X } from "lucide-react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+    Loader2, Volume2, Activity, Sparkles, X,
+    Mic, MicOff, Keyboard, MessageSquare, Send
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LiveVoiceAssistantProps {
     onTaskCreated?: () => void;
@@ -17,10 +20,12 @@ declare global {
 }
 
 export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoiceAssistantProps) {
-    const [isActive, setIsActive] = useState(false);
+    const [mode, setMode] = useState<"voice" | "text">("voice");
     const [status, setStatus] = useState<"idle" | "listening" | "processing" | "speaking" | "error">("idle");
     const [transcript, setTranscript] = useState("");
+    const [textInput, setTextInput] = useState("");
     const [volume, setVolume] = useState(0);
+    const [isMicEnabled, setIsMicEnabled] = useState(true);
 
     const recognitionRef = useRef<any>(null);
     const lastTranscriptRef = useRef<string>("");
@@ -28,52 +33,40 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const statusRef = useRef(status);
-    const shouldIdentifyRef = useRef(false);
+    const isMicEnabledRef = useRef(isMicEnabled);
     const lastTalkingTimeRef = useRef<number>(Date.now());
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
-    useEffect(() => {
-        statusRef.current = status;
-        console.log("[LiveVoiceAssistant] Status changed to:", status);
-    }, [status]);
+    useEffect(() => { statusRef.current = status; }, [status]);
+    useEffect(() => { isMicEnabledRef.current = isMicEnabled; }, [isMicEnabled]);
 
-    // Major fix: set shouldIdentifyRef.current immediately when isActive is true
+    // Handle Cleanup
     useEffect(() => {
-        shouldIdentifyRef.current = isActive;
-    }, [isActive]);
-
-    // Cleanup & Auto-start
-    useEffect(() => {
-        console.log("[LiveVoiceAssistant] Component Mounted. Starting session...");
-        startSession();
-
+        if (mode === "voice" && isMicEnabled) {
+            startVoiceSession();
+        }
         return () => {
-            console.log("[LiveVoiceAssistant] Component Unmounting. Cleaning up...");
             handleCompleteTermination();
         };
     }, []);
 
     const handleCompleteTermination = () => {
-        shouldIdentifyRef.current = false;
+        setIsMicEnabled(false);
+        isMicEnabledRef.current = false;
 
         if (recognitionRef.current) {
             recognitionRef.current.onend = null;
             recognitionRef.current.onerror = null;
             recognitionRef.current.onresult = null;
-            recognitionRef.current.onstart = null;
-            try {
-                recognitionRef.current.abort();
-            } catch (e) { }
+            try { recognitionRef.current.abort(); } catch (e) { }
         }
         recognitionRef.current = null;
 
         if (mediaRecorderRef.current) {
             mediaRecorderRef.current.onstop = null;
-            if (mediaRecorderRef.current.state !== 'inactive') {
-                mediaRecorderRef.current.stop();
-            }
+            if (mediaRecorderRef.current.state !== 'inactive') try { mediaRecorderRef.current.stop(); } catch (e) { }
         }
         mediaRecorderRef.current = null;
 
@@ -85,7 +78,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     };
 
     const speak = (text: string) => {
-        console.log("[LiveVoiceAssistant] Assistant speaking:", text);
         if (!text) return;
         const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
         if (!cleanText) return;
@@ -93,20 +85,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = "fr-FR";
-        utterance.rate = 1.0;
-        utterance.pitch = 1.0;
 
         utterance.onstart = () => setStatus("speaking");
         utterance.onend = () => {
-            if (shouldIdentifyRef.current) {
-                setStatus("listening");
+            setStatus("listening");
+            if (mode === "voice" && isMicEnabledRef.current) {
                 restartListening();
             }
         };
-        utterance.onerror = (e) => {
-            console.error("[LiveVoiceAssistant] Speech synthesis error:", e);
-            if (shouldIdentifyRef.current) {
-                setStatus("listening");
+        utterance.onerror = () => {
+            setStatus("listening");
+            if (mode === "voice" && isMicEnabledRef.current) {
                 restartListening();
             }
         };
@@ -114,14 +103,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         window.speechSynthesis.speak(utterance);
     };
 
-    const processText = async (text: string, audioBase64?: string) => {
+    const processMessage = async (text: string, audioBase64?: string) => {
         if (statusRef.current === "processing") return;
-        if (!shouldIdentifyRef.current) {
-            console.warn("[LiveVoiceAssistant] Aborting processText: Session not active");
-            return;
-        }
-
-        console.log("[LiveVoiceAssistant] Processing input:", text || "[Audio only]");
         setStatus("processing");
 
         try {
@@ -131,31 +114,23 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 body: JSON.stringify({ message: text, audio: audioBase64 }),
             });
 
-            if (!res.ok) throw new Error(`Serveur error: ${res.status}`);
+            if (!res.ok) throw new Error("Erreur");
             const data = await res.json();
-            console.log("[LiveVoiceAssistant] IA Response received:", data);
 
-            if (data.actions && data.actions.length > 0) {
-                console.log("[LiveVoiceAssistant] Actions detected. calling onTaskCreated.");
-                onTaskCreated?.();
-            }
+            if (data.actions && data.actions.length > 0) onTaskCreated?.();
             speak(data.message);
+            setTranscript("");
+            lastTranscriptRef.current = "";
         } catch (error) {
-            console.error("[LiveVoiceAssistant] API call failed:", error);
+            console.error(error);
             setStatus("error");
-            if (shouldIdentifyRef.current) {
-                setTimeout(() => setStatus("listening"), 3000);
-            }
+            setTimeout(() => setStatus("listening"), 3000);
         }
     };
 
     const startAudioAnalysis = (stream: MediaStream) => {
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
-        if (audioContextRef.current.state === 'suspended') {
-            audioContextRef.current.resume();
-        }
+        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
 
         const source = audioContextRef.current.createMediaStreamSource(stream);
         analyserRef.current = audioContextRef.current.createAnalyser();
@@ -163,26 +138,20 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         source.connect(analyserRef.current);
 
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-
         const update = () => {
-            if (!shouldIdentifyRef.current) return;
-
-            if (analyserRef.current && statusRef.current === "listening") {
+            if (analyserRef.current && statusRef.current === "listening" && isMicEnabledRef.current) {
                 analyserRef.current.getByteFrequencyData(dataArray);
                 let sum = 0;
                 for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
                 const avg = sum / dataArray.length;
                 setVolume(avg / 128);
 
-                // Auto-submit on silence detection (2.5 seconds)
                 if (avg > 15) {
                     lastTalkingTimeRef.current = Date.now();
-                } else if (Date.now() - lastTalkingTimeRef.current > 2500) {
-                    const currentTranscript = (lastTranscriptRef.current + transcript).trim();
-                    if (currentTranscript && statusRef.current === "listening") {
-                        console.log("[LiveVoiceAssistant] Silence detected. Auto-submitting...");
-                        handleSubmit();
-                    }
+                } else if (Date.now() - lastTalkingTimeRef.current > 3000) {
+                    // Auto-submit after 3s of silence
+                    const final = (lastTranscriptRef.current + transcript).trim();
+                    if (final && statusRef.current === "listening") handleVoiceSubmit();
                 }
             }
             animationFrameRef.current = requestAnimationFrame(update);
@@ -190,59 +159,37 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         update();
     };
 
-    const startSession = async () => {
+    const startVoiceSession = async () => {
         try {
-            console.log("[LiveVoiceAssistant] startSession() triggered.");
-            shouldIdentifyRef.current = true; // Set IMMEDIATELY to avoid race conditions
-            setIsActive(true);
             setStatus("listening");
-            setTranscript("");
-            lastTranscriptRef.current = "";
-
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            console.log("[LiveVoiceAssistant] Microphone access granted.");
-
             initRecognition();
             startAudioAnalysis(stream);
 
             mediaRecorderRef.current = new MediaRecorder(stream);
             mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
             mediaRecorderRef.current.onstop = async () => {
-                if (!shouldIdentifyRef.current) return;
-                console.log("[LiveVoiceAssistant] MediaRecorder stopped. Processing fallback audio.");
+                if (!isMicEnabledRef.current) return;
                 const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
                 audioChunksRef.current = [];
                 const reader = new FileReader();
                 reader.readAsDataURL(blob);
                 reader.onloadend = () => {
                     const base64 = reader.result as string;
-                    // Only use audio fallback if transcript is empty
-                    if (!lastTranscriptRef.current.trim() && !transcript.trim() && shouldIdentifyRef.current) {
-                        processText("", base64.split(',')[1]);
+                    if (!lastTranscriptRef.current.trim() && !transcript.trim() && isMicEnabledRef.current) {
+                        processMessage("", base64.split(',')[1]);
                     }
                 };
             };
             mediaRecorderRef.current.start();
-
         } catch (err) {
-            console.error("[LiveVoiceAssistant] Microphone access error:", err);
             setStatus("error");
         }
     };
 
-    const stopSession = () => {
-        console.log("[LiveVoiceAssistant] User manually stopped session.");
-        handleCompleteTermination();
-        setIsActive(false);
-        onClose?.();
-    };
-
     const initRecognition = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            console.error("[LiveVoiceAssistant] SpeechRecognition not supported by this browser.");
-            return;
-        }
+        if (!SpeechRecognition) return;
 
         const recognition = new SpeechRecognition();
         recognition.lang = "fr-FR";
@@ -253,162 +200,192 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             let interim = "";
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const text = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    lastTranscriptRef.current += text + " ";
-                } else {
-                    interim += text;
-                }
+                if (event.results[i].isFinal) lastTranscriptRef.current += text + " ";
+                else interim += text;
             }
-            setTranscript(lastTranscriptRef.current + interim);
+            setTranscript(interim); // We show interim separately for smoothness
             lastTalkingTimeRef.current = Date.now();
         };
 
         recognition.onend = () => {
-            if (shouldIdentifyRef.current && statusRef.current === "listening") {
-                console.log("[LiveVoiceAssistant] Recognition ended unexpectedly. Restarting...");
+            if (isMicEnabledRef.current && statusRef.current === "listening") {
                 try { recognition.start(); } catch (e) { }
-            } else {
-                console.log("[LiveVoiceAssistant] Recognition ended naturally.");
             }
         };
 
-        recognition.onerror = (event: any) => {
-            console.error("[LiveVoiceAssistant] Recognition error:", event.error);
-        };
-
-        try {
-            recognition.start();
-            recognitionRef.current = recognition;
-            console.log("[LiveVoiceAssistant] Recognition started successfully.");
-        } catch (e) {
-            console.error("[LiveVoiceAssistant] Failed to start recognition:", e);
-        }
+        recognition.start();
+        recognitionRef.current = recognition;
     };
 
     const restartListening = () => {
-        if (!shouldIdentifyRef.current) return;
-        console.log("[LiveVoiceAssistant] Resetting for new input.");
+        if (!isMicEnabledRef.current) return;
         lastTranscriptRef.current = "";
         setTranscript("");
         try { recognitionRef.current?.start(); } catch (e) { }
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "inactive") {
-            mediaRecorderRef.current.start();
+        if (mediaRecorderRef.current?.state === "inactive") mediaRecorderRef.current.start();
+    };
+
+    const handleVoiceSubmit = () => {
+        const final = (lastTranscriptRef.current + transcript).trim();
+        if (final) {
+            if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
+            if (mediaRecorderRef.current?.state !== 'inactive') {
+                mediaRecorderRef.current!.onstop = null;
+                mediaRecorderRef.current!.stop();
+            }
+            processMessage(final);
         }
     };
 
-    const handleSubmit = () => {
-        const finalTranscript = (lastTranscriptRef.current + transcript).trim();
-        console.log("[LiveVoiceAssistant] handleSubmit() called with text:", finalTranscript);
+    const handleTextSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (textInput.trim()) {
+            processMessage(textInput.trim());
+            setTextInput("");
+        }
+    };
 
-        if (finalTranscript) {
+    const toggleMic = () => {
+        if (isMicEnabled) {
+            setIsMicEnabled(false);
+            isMicEnabledRef.current = false;
             if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                // Prevent fallback processing when we have text
-                mediaRecorderRef.current.onstop = null;
-                mediaRecorderRef.current.stop();
-            }
-            processText(finalTranscript);
-        } else if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-            // No text, trigger fallback audio via onstop
-            mediaRecorderRef.current.stop();
+            if (mediaRecorderRef.current?.state !== 'inactive') try { mediaRecorderRef.current!.stop(); } catch (e) { }
+        } else {
+            setIsMicEnabled(true);
+            isMicEnabledRef.current = true;
+            restartListening();
         }
     };
 
     return (
-        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-transparent px-6">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/5 blur-[120px] rounded-full pointer-events-none" />
-
-            {/* Neural Visualizer UI */}
-            <div className="relative w-full max-w-md aspect-square flex items-center justify-center z-10">
-                <motion.div
-                    animate={{
-                        scale: [1, 1.15, 1],
-                        opacity: [0.3, 0.4, 0.3],
-                    }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-0 bg-gradient-to-br from-[var(--accent-purple)]/10 to-[var(--accent-teal)]/10 rounded-full blur-[60px]"
-                />
-
-                <div className="flex items-center gap-1.5 h-40">
-                    {[...Array(24)].map((_, i) => (
-                        <motion.div
-                            key={i}
-                            animate={{
-                                height: status === 'listening' ? [12, 12 + (volume * 140 * (0.5 + Math.random() * 0.5)), 12] : 8
-                            }}
-                            className={`w-1 rounded-full ${status === 'processing' ? 'bg-[var(--accent-purple)] animate-pulse' :
-                                status === 'speaking' ? 'bg-cyan-400' :
-                                    'bg-[var(--accent-purple)]'
-                                }`}
-                        />
-                    ))}
+        <div className="fixed inset-0 z-[100] flex flex-col bg-[#030014]/95 backdrop-blur-3xl lg:relative lg:inset-auto lg:h-full lg:bg-transparent lg:backdrop-blur-none">
+            {/* Header Mobile Only */}
+            <div className="flex items-center justify-between p-6 lg:hidden">
+                <div className="flex items-center gap-2">
+                    <Sparkles className="text-[var(--accent-purple)]" size={20} />
+                    <span className="font-bold tracking-tight text-white">Track Habbit AI</span>
                 </div>
-
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className={`w-28 h-28 rounded-3xl border-2 flex items-center justify-center bg-[var(--bg-card)]/80 backdrop-blur-xl shadow-2xl transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-purple)] shadow-[var(--accent-purple)]/20' :
-                            status === 'speaking' ? 'border-cyan-400 shadow-cyan-400/20' :
-                                'border-[var(--border-subtle)]'
-                            }`}
-                    >
-                        {status === 'processing' ? <Loader2 className="w-10 h-10 text-[var(--accent-purple)] animate-spin" /> :
-                            status === 'speaking' ? <div className="text-cyan-400"><Volume2 size={40} className="animate-pulse" /></div> :
-                                <div className="text-[var(--accent-purple)]"><Activity size={40} /></div>}
-                    </motion.div>
-                </div>
+                <button onClick={onClose} className="p-2 text-white/60 hover:text-white transition-colors">
+                    <X size={24} />
+                </button>
             </div>
 
-            {/* Controls and Transcript */}
-            <div className="w-full max-w-2xl mt-12 space-y-8 z-20">
-                <div className="text-center space-y-4">
-                    <div className="inline-flex items-center gap-2 badge px-4 py-1.5 border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
-                        <span className={`w-2 h-2 rounded-full ${status === 'listening' ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
-                        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-white">
-                            {status === 'listening' ? "Live System Active" : "Neural Link Established"}
-                        </span>
-                    </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
+                {/* Visualizer Background */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/10 blur-[120px] rounded-full pointer-events-none" />
 
-                    <div>
-                        <h2 className="heading-display text-3xl">
-                            {status === 'listening' ? "Je vous écoute..." :
-                                status === 'processing' ? "Analyse Neurone" :
-                                    status === 'speaking' ? "Système Vocal" : "Assistant Vocal"}
-                            <span className="heading-serif"> .</span>
-                        </h2>
-                        <div className="mt-4 min-h-[60px] max-h-[120px] overflow-y-auto px-6 py-4 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl">
-                            <p className="text-[var(--text-secondary)] text-sm italic opacity-80 leading-relaxed font-medium">
-                                {transcript || (lastTranscriptRef.current.trim() ? lastTranscriptRef.current : "Commencez à parler pour que l'IA puisse vous aider...")}
-                            </p>
+                {/* Main Interaction Area */}
+                <div className="relative w-full max-w-lg flex flex-col items-center gap-12 z-10">
+
+                    {/* Visualizer (Only in voice mode) */}
+                    {mode === "voice" && (
+                        <div className="relative w-full aspect-square max-w-[320px] flex items-center justify-center">
+                            <motion.div
+                                animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.4, 0.2] }}
+                                transition={{ duration: 4, repeat: Infinity }}
+                                className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-cyan-500/20 rounded-full blur-[60px]"
+                            />
+
+                            <div className="flex items-center gap-1.5 h-32">
+                                {[...Array(20)].map((_, i) => (
+                                    <motion.div
+                                        key={i}
+                                        animate={{ height: isMicEnabled && status === 'listening' ? [12, 12 + (volume * 120), 12] : 8 }}
+                                        className={`w-1 rounded-full ${status === 'processing' ? 'bg-purple-500 animate-pulse' : status === 'speaking' ? 'bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.5)]' : 'bg-purple-500/50'}`}
+                                    />
+                                ))}
+                            </div>
+
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                <motion.div className={`w-24 h-24 rounded-3xl border-2 flex items-center justify-center bg-white/[0.03] backdrop-blur-xl transition-all duration-500 ${status === 'listening' ? 'border-purple-500/50' : status === 'speaking' ? 'border-cyan-400' : 'border-white/10'}`}>
+                                    {status === 'processing' ? <Loader2 className="w-10 h-10 text-purple-500 animate-spin" /> : status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-pulse" /> : <Activity size={40} className="text-purple-400" />}
+                                </motion.div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Transcriptions / Text Output */}
+                    <div className="w-full text-center space-y-6">
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold text-white tracking-tight">
+                                {status === 'listening' ? "Je vous écoute..." : status === 'processing' ? "Analyse en cours..." : status === 'speaking' ? "Réponse Vocale" : "Assistant Prêt"}
+                            </h2>
+                            <div className="min-h-[80px] p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
+                                <p className="text-sm text-white/70 italic leading-relaxed">
+                                    {mode === "voice" ? (
+                                        <>
+                                            <span className="text-white/40">{lastTranscriptRef.current}</span>
+                                            <span className="text-white font-medium">{transcript}</span>
+                                            {!lastTranscriptRef.current && !transcript && "Dites quelque chose..."}
+                                        </>
+                                    ) : (
+                                        "Tapez votre demande ci-dessous..."
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Controls Bar */}
+                        <div className="flex items-center justify-center gap-4">
+                            {mode === "voice" ? (
+                                <>
+                                    <button
+                                        onClick={toggleMic}
+                                        className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${isMicEnabled ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}
+                                    >
+                                        {isMicEnabled ? <Mic size={24} /> : <MicOff size={24} />}
+                                    </button>
+
+                                    <button
+                                        onClick={handleVoiceSubmit}
+                                        disabled={!lastTranscriptRef.current.trim() && !transcript.trim()}
+                                        className="btn-primary flex-1 h-14 max-w-[200px] disabled:opacity-30"
+                                    >
+                                        <Sparkles size={18} />
+                                        <span>Envoyer</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setMode("text")}
+                                        className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/10 text-white/60 flex items-center justify-center hover:bg-white/10 hover:text-white transition-all"
+                                    >
+                                        <Keyboard size={24} />
+                                    </button>
+                                </>
+                            ) : (
+                                <form onSubmit={handleTextSubmit} className="w-full flex gap-3">
+                                    <input
+                                        autoFocus
+                                        value={textInput}
+                                        onChange={(e) => setTextInput(e.target.value)}
+                                        placeholder="Comment puis-je vous aider ?"
+                                        className="flex-1 h-14 bg-white/[0.03] border border-white/10 rounded-2xl px-6 text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 transition-all"
+                                    />
+                                    <button type="submit" className="w-14 h-14 rounded-2xl bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/20 transition-all active:scale-95">
+                                        <Send size={24} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode("voice")}
+                                        className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/10 text-white/60 flex items-center justify-center"
+                                    >
+                                        <MessageSquare size={24} />
+                                    </button>
+                                </form>
+                            )}
                         </div>
                     </div>
                 </div>
-
-                <div className="flex gap-4 justify-center">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!transcript.trim() && !lastTranscriptRef.current.trim() && status === 'processing'}
-                        className="btn-primary min-w-[200px] h-14 text-base disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        <Sparkles size={18} />
-                        <span>Envoyer</span>
-                    </button>
-
-                    <button
-                        onClick={stopSession}
-                        className="btn-secondary w-14 h-14 p-0 flex items-center justify-center border-rose-500/20 text-rose-400 hover:bg-rose-500/10"
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <div className="text-[10px] text-[var(--text-muted)] text-center uppercase tracking-widest opacity-50 flex items-center justify-center gap-2">
-                    <span className="flex-1 h-px bg-[var(--border-subtle)]" />
-                    Neural Processing Core V2.0.0
-                    <span className="flex-1 h-px bg-[var(--border-subtle)]" />
-                </div>
             </div>
+
+            {/* Desktop Close Button */}
+            <button
+                onClick={onClose}
+                className="hidden lg:flex absolute top-8 right-8 w-12 h-12 rounded-xl bg-white/[0.03] border border-white/10 text-white/40 items-center justify-center hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-all z-[110]"
+            >
+                <X size={24} />
+            </button>
         </div>
     );
 }

@@ -20,32 +20,22 @@ Tu peux effectuer TOUTES les actions suivantes via des blocs JSON à la fin de t
 
 **Formats JSON STRICTS (dans un tableau []) :**
 
-**GESTION DES TÂCHES :**
-- Créer : {"action": "create_task", "title": "NOM", "priority": "low|medium|high", "due_date": "YYYY-MM-DD", "description": "..."}
-- Modifier : {"action": "update_task", "id": "ID_VU_DANS_LE_CONTEXTE", "updates": {"status": "todo|done", "priority": "...", "due_date": "..."}}
+### GESTION DES TÂCHES :
+- Créer : {"action": "create_task", "title": "NOM", "priority": "low|medium|high", "due_date": "YYYY-MM-DD HH:mm:ss", "description": "..."}
+- Modifier : {"action": "update_task", "id": "ID_VU_DANS_LE_CONTEXTE", "updates": {"status": "todo|done", "priority": "...", "due_date": "YYYY-MM-DD HH:mm:ss"}}
 - Supprimer : {"action": "delete_task", "id": "ID_VU_DANS_LE_CONTEXTE"}
-- Créer pour une Équipe : {"action": "create_team_task", "team_id": "ID_EQUIPE", "title": "NOM", "priority": "...", "assigned_to": "USER_ID_MEMBRE (optionnel)"}
+- Supprimer tout : {"action": "delete_all_tasks"}
+- Créer pour une Équipe : {"action": "create_team_task", "team_id": "ID_EQUIPE", "title": "NOM", "priority": "...", "assigned_to": "USER_ID_MEMBRE (optionnel)", "due_date": "YYYY-MM-DD HH:mm:ss"}
 
-**GESTION DES ÉQUIPES :**
-- Créer une Équipe : {"action": "create_team", "name": "NOM_EQUIPE"}
-- Supprimer une Équipe : {"action": "delete_team", "id": "ID_EQUIPE"} (Seulement si l'utilisateur est propriétaire)
-
-**GESTION DES NOTIFICATIONS :**
-- Marquer comme lu : {"action": "mark_notification_read", "id": "ID_NOTIFICATION"}
-- Tout marquer comme lu : {"action": "mark_all_notifications_read"}
-
-**RAPPELS (Simulés par des tâches pour l'instant) :**
-- Créer un rappel : Utilise "create_task" avec une date précise et une priorité HIGH.
-
-### RÈGLES D'OR :
-1. **NE LIS JAMAIS LES IDs**.
-2. **NE DÉCRIS PAS TES ACTIONS** (pas de *sourire*).
-3. **Pas de Markdown complexe** pour la voix.
-4. **Réponds TOUJOURS en français**.
-5. Si on te demande de planifier l'agenda, analyse les tâches existantes, propose un plan, puis si validé, utilise "update_task" pour mettre des dates.`;
+**RÈGLES D'OR :**
+1. **DATES & HEURES** : Utilise TOUJOURS le format "YYYY-MM-DD HH:mm:ss" si l'utilisateur donne une heure. Si la date est aujourd'hui ({{today}}), calcule la date correcte.
+2. **ACTIONS GROUPÉES** : Si on te demande de supprimer TOUTES les tâches, utilise "delete_all_tasks".`;
 
 export async function POST(request: NextRequest) {
     try {
+        const today = new Date().toISOString().split('T')[0];
+        const fullPrompt = SYSTEM_PROMPT.replace('{{today}}', today);
+
         if (!process.env.OPENROUTER_API_KEY) {
             return NextResponse.json({ error: "Clé API manquante dans Vercel" }, { status: 500 });
         }
@@ -85,7 +75,6 @@ export async function POST(request: NextRequest) {
         if (memberships && memberships.length > 0) {
             teamsContext = "\n\nÉquipes disponibles :\n";
             for (const m of memberships) {
-                // Pour chaque équipe, on pourrait récupérer les membres si on veut que l'IA connaisse les collègues
                 const { data: members } = await supabase
                     .from('memberships')
                     .select('user_id, role')
@@ -104,11 +93,11 @@ export async function POST(request: NextRequest) {
 
         const tasksContext = tasks && tasks.length > 0
             ? `\n\nTâches personnelles actuelles:\n${(tasks as any[]).map(t =>
-                `- [ID: ${t.id}] "${t.title}" (statut: ${t.status}, priorité: ${t.priority})`
+                `- [ID: ${t.id}] "${t.title}" (statut: ${t.status}, priorité: ${t.priority}, date: ${t.due_date})`
             ).join('\n')}`
             : '\n\nPas de tâches personnelles.';
 
-        // Récupérer l'historique
+        // ... (remaining history code)
         const { data: chatHistory } = await supabase
             .from('chat_history')
             .select('role, content')
@@ -118,23 +107,22 @@ export async function POST(request: NextRequest) {
 
         const cleanHistory = chatHistory?.reverse().map((h: any) => ({
             role: h.role,
-            content: h.content // On garde TOUT le contenu, y compris les JSON, pour que l'IA ait le contexte (IDs, etc.)
+            content: h.content
         })) || [];
 
         const messages = [
-            { role: 'system', content: SYSTEM_PROMPT + tasksContext + teamsContext },
+            { role: 'system', content: fullPrompt + tasksContext + teamsContext },
             ...cleanHistory
         ];
 
         // Construction du message utilisateur (Texte ou Audio)
         if (audio) {
-            // Si on a de l'audio, on l'envoie en tant que contenu multimodal pour Gemini 2.0
             messages.push({
                 role: 'user',
                 content: [
-                    { type: 'text', text: message || "L'utilisateur a envoyé un message vocal." },
+                    { type: 'text', text: message || "L'utilisateur parle." },
                     {
-                        type: 'image_url', // OpenRouter utilise souvent image_url pour tout contenu binaire (à vérifier selon le modèle)
+                        type: 'image_url',
                         image_url: {
                             url: audio.startsWith('data:') ? audio : `data:audio/wav;base64,${audio}`
                         }
@@ -146,8 +134,6 @@ export async function POST(request: NextRequest) {
         }
 
         // Appel à OpenRouter
-        console.log('Appel OpenRouter avec le modèle:', 'google/gemini-2.0-flash-001', audio ? '(avec audio)' : '(texte)');
-
         const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -182,13 +168,11 @@ export async function POST(request: NextRequest) {
         // Traiter les actions via extraction du bloc JSON
         const actionsPerformed: any[] = [];
         try {
-            // Tentative 1: Bloc JSON avec backticks
             let jsonString = "";
             const jsonBlockMatch = assistantMessageStr.match(/```json([\s\S]*?)```/);
             if (jsonBlockMatch && jsonBlockMatch[1]) {
                 jsonString = jsonBlockMatch[1];
             } else {
-                // Tentative 2: Recherche de tableau JSON [ ... ] sans backticks
                 const arrayMatch = assistantMessageStr.match(/\[\s*\{[\s\S]*"action":[\s\S]*\}\s*\]/);
                 if (arrayMatch) jsonString = arrayMatch[0];
             }
@@ -196,7 +180,6 @@ export async function POST(request: NextRequest) {
             if (jsonString) {
                 const actionsData = JSON.parse(jsonString);
                 const actionsList = Array.isArray(actionsData) ? actionsData : [actionsData];
-                console.log("[API Chat] Actions extraites:", actionsList.length);
 
                 for (const actionData of actionsList) {
                     switch (actionData.action) {
@@ -214,10 +197,7 @@ export async function POST(request: NextRequest) {
                                     }])
                                     .select()
                                     .single();
-
-                                if (!error && newTask) {
-                                    actionsPerformed.push({ type: 'task_created', task: newTask });
-                                }
+                                if (!error && newTask) actionsPerformed.push({ type: 'task_created', task: newTask });
                             }
                             break;
 
@@ -230,25 +210,20 @@ export async function POST(request: NextRequest) {
                                     .eq('user_id', user.id)
                                     .select()
                                     .single();
-
-                                if (!error && updatedTask) {
-                                    actionsPerformed.push({ type: 'task_updated', task: updatedTask });
-                                }
+                                if (!error && updatedTask) actionsPerformed.push({ type: 'task_updated', task: updatedTask });
                             }
                             break;
 
                         case 'delete_task':
                             if (actionData.id) {
-                                const { error } = await supabase
-                                    .from('tasks')
-                                    .delete()
-                                    .eq('id', actionData.id)
-                                    .eq('user_id', user.id);
-
-                                if (!error) {
-                                    actionsPerformed.push({ type: 'task_deleted', id: actionData.id });
-                                }
+                                const { error } = await supabase.from('tasks').delete().eq('id', actionData.id).eq('user_id', user.id);
+                                if (!error) actionsPerformed.push({ type: 'task_deleted', id: actionData.id });
                             }
+                            break;
+
+                        case 'delete_all_tasks':
+                            const { error: delError } = await supabase.from('tasks').delete().eq('user_id', user.id);
+                            if (!delError) actionsPerformed.push({ type: 'all_tasks_deleted' });
                             break;
 
                         case 'create_team_task':
