@@ -140,22 +140,18 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
             recognition.onstart = () => console.log("Recognition Started");
 
+            recognition.onstart = () => console.log("Recognition Started");
+
             recognition.onresult = (event: any) => {
-                let fullText = lastTranscriptRef.current;
-                let interim = "";
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const text = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        lastTranscriptRef.current += text + " ";
-                        fullText = lastTranscriptRef.current;
-                    } else {
-                        interim += text;
-                    }
-                }
-                const currentText = (fullText + interim).trim();
-                setTranscript(currentText);
-                // Also update text input for hybrid feel
-                setTextInput(currentText);
+                // Fix for duplication: Do NOT iterate and append to ref.
+                // Just map the current session's results entirely.
+                const currentSessionText = Array.from(event.results)
+                    .map((res: any) => res[0].transcript)
+                    .join('');
+
+                const fullText = (lastTranscriptRef.current + " " + currentSessionText).trim();
+                setTranscript(fullText);
+                setTextInput(fullText);
             };
 
             recognition.onerror = (event: any) => {
@@ -167,9 +163,10 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             };
 
             recognition.onend = () => {
-                // On Mobile: If we stop, we usually go to idle unless we are in a persistent desktop mode
+                // Save current state when session ends so next start appends to it
+                if (transcript) lastTranscriptRef.current = transcript;
+
                 if (statusRef.current === "listening") {
-                    // unexpected end
                     setStatus("idle");
                 }
             };
@@ -226,9 +223,9 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     <div className={`relative flex items-center justify-center transition-all duration-500 ${status === 'listening' ? 'scale-110' : 'scale-100'
                         }`}>
                         <div className={`w-32 h-32 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${status === 'listening' ? 'border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.4)] bg-purple-500/10' :
-                                status === 'processing' ? 'border-white/20 animate-pulse' :
-                                    status === 'speaking' ? 'border-cyan-400 shadow-[0_0_40px_rgba(34,211,238,0.4)] bg-cyan-400/10' :
-                                        'border-white/10 bg-white/[0.02]'
+                            status === 'processing' ? 'border-white/20 animate-pulse' :
+                                status === 'speaking' ? 'border-cyan-400 shadow-[0_0_40px_rgba(34,211,238,0.4)] bg-cyan-400/10' :
+                                    'border-white/10 bg-white/[0.02]'
                             }`}>
                             {status === 'processing' ? <Loader2 size={40} className="text-white animate-spin" /> :
                                 status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-bounce" /> :
@@ -245,10 +242,10 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 </div>
 
                 {/* Chat/Transcript Area */}
-                <div className="w-full max-w-md mt-32 space-y-6">
-                    <div className="min-h-[120px] bg-white/[0.05] rounded-3xl p-6 border border-white/10 flex items-center justify-center text-center">
+                <div className="w-full max-w-md mt-32 space-y-6 flex-1 min-h-0 flex flex-col">
+                    <div className="flex-1 min-h-[120px] max-h-[50vh] bg-white/[0.05] rounded-3xl p-6 border border-white/10 flex flex-col items-center text-center overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                         {textInput || transcript ? (
-                            <p className="text-xl text-white font-medium leading-relaxed">
+                            <p className="text-xl text-white font-medium leading-relaxed break-words w-full">
                                 {transcript || textInput}
                             </p>
                         ) : (
@@ -279,8 +276,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                             }
                         }}
                         className={`w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all duration-300 shadow-xl ${status === 'listening'
-                                ? 'bg-rose-500 text-white translate-y-0 shadow-rose-500/30'
-                                : 'bg-purple-600 text-white -translate-y-0 shadow-purple-600/30 hover:bg-purple-500'
+                            ? 'bg-rose-500 text-white translate-y-0 shadow-rose-500/30'
+                            : 'bg-purple-600 text-white -translate-y-0 shadow-purple-600/30 hover:bg-purple-500'
                             }`}
                     >
                         {status === 'listening' ? <Send size={28} className="ml-1" /> : <Mic size={28} />}
