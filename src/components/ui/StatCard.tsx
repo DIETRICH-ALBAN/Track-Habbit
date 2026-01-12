@@ -1,51 +1,62 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
     label: string;
     value: string | number;
     icon: LucideIcon;
-    color?: "blue" | "purple" | "indigo" | "white";
+    trend?: "up" | "down" | "neutral";
+    trendValue?: string;
     delay?: number;
 }
 
-const colorMap = {
-    blue: "text-blue-500",
-    purple: "text-purple-500",
-    indigo: "text-indigo-600",
-    white: "text-white",
-};
+export function StatCard({
+    label,
+    value,
+    icon: Icon,
+    trend = "neutral",
+    trendValue,
+    delay = 0
+}: StatCardProps) {
+    const trendConfig = {
+        up: { icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+        down: { icon: TrendingDown, color: "text-rose-400", bg: "bg-rose-400/10" },
+        neutral: { icon: Minus, color: "text-zinc-400", bg: "bg-zinc-400/10" }
+    };
 
-export function StatCard({ label, value, icon: Icon, color = "indigo", delay = 0 }: StatCardProps) {
+    const TrendIcon = trendConfig[trend].icon;
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ y: -4, transition: { duration: 0.2 } }}
-            className="glass-panel p-6 group flex flex-col gap-4"
+            transition={{ duration: 0.5, delay, ease: [0.25, 0.1, 0.25, 1] }}
+            className="card p-6 group"
         >
-            <div className="flex items-center justify-between">
-                <div className={cn(
-                    "w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center border border-white/[0.05] transition-all duration-300 group-hover:border-indigo-500/30",
-                    colorMap[color]
-                )}>
-                    <Icon size={20} strokeWidth={2} />
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div className="icon-box">
+                    <Icon size={22} strokeWidth={1.5} />
                 </div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
-                    Active Now
-                </div>
+                {trendValue && (
+                    <div className={cn(
+                        "flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                        trendConfig[trend].bg,
+                        trendConfig[trend].color
+                    )}>
+                        <TrendIcon size={12} />
+                        <span>{trendValue}</span>
+                    </div>
+                )}
             </div>
 
-            <div className="flex flex-col gap-1">
-                <span className="text-sm font-medium text-slate-400">{label}</span>
-                <div className="text-3xl font-bold tracking-tight text-white flex items-baseline gap-2">
-                    {value}
-                    <span className="text-[10px] text-indigo-500 font-bold tracking-widest uppercase">+2%</span>
-                </div>
+            {/* Content */}
+            <div className="space-y-1">
+                <p className="text-sm text-[var(--text-muted)]">{label}</p>
+                <p className="text-3xl font-bold tracking-tight">{value}</p>
             </div>
         </motion.div>
     );

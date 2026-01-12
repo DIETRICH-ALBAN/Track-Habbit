@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Loader2, Users } from "lucide-react";
+import { X, Plus, Loader2, Users, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { CreateTaskInput, TaskPriority } from "@/types/task";
 import { Team } from "@/types/team";
+import { motion } from "framer-motion";
 
 interface TaskFormProps {
     onClose: () => void;
@@ -78,105 +79,127 @@ export default function TaskForm({ onClose, onSuccess }: TaskFormProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg glass-morphism p-8 space-y-6 relative">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center glass-overlay p-4"
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+                className="modal-panel w-full max-w-lg p-8 space-y-6 relative"
+            >
+                {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+                    className="absolute top-4 right-4 icon-box icon-box-sm hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all"
                 >
-                    <X className="w-6 h-6" />
+                    <X size={16} />
                 </button>
 
+                {/* Header */}
                 <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-outfit font-bold gradient-text">Nouvelle Tâche</h2>
-                    <p className="text-white/40 text-sm">Ajoutez une nouvelle tâche à votre liste.</p>
+                    <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                        <Sparkles size={24} className="text-white" />
+                    </div>
+                    <h2 className="heading-display text-2xl">Nouvelle <span className="heading-serif">Tâche</span></h2>
+                    <p className="text-[var(--text-muted)] text-sm">Ajoutez une nouvelle tâche à votre liste.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Title */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Titre *</label>
+                        <label className="section-label">Titre *</label>
                         <input
                             type="text"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all"
+                            className="input"
                             placeholder="Ex: Finaliser le rapport..."
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                         />
                     </div>
 
+                    {/* Description */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Description</label>
+                        <label className="section-label">Description</label>
                         <textarea
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all resize-none h-24"
+                            className="input resize-none h-24"
                             placeholder="Détails supplémentaires..."
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                         />
                     </div>
 
+                    {/* Priority & Due Date */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Priorité</label>
+                            <label className="section-label">Priorité</label>
                             <select
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer text-white"
+                                className="input appearance-none cursor-pointer"
                                 value={priority}
                                 onChange={(e) => setPriority(e.target.value as TaskPriority)}
                             >
-                                <option value="low" className="bg-[#0a0a0a]">🟢 Basse</option>
-                                <option value="medium" className="bg-[#0a0a0a]">🟡 Moyenne</option>
-                                <option value="high" className="bg-[#0a0a0a]">🔴 Haute</option>
+                                <option value="low" className="bg-[var(--bg-card)]">🟢 Basse</option>
+                                <option value="medium" className="bg-[var(--bg-card)]">🟡 Moyenne</option>
+                                <option value="high" className="bg-[var(--bg-card)]">🔴 Haute</option>
                             </select>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Échéance</label>
+                            <label className="section-label">Échéance</label>
                             <input
                                 type="date"
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all text-white"
+                                className="input"
                                 value={dueDate}
                                 onChange={(e) => setDueDate(e.target.value)}
                             />
                         </div>
                     </div>
 
+                    {/* Team Assignment */}
                     {teams.length > 0 && (
                         <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Assigner à une équipe</label>
+                            <label className="section-label">Assigner à une équipe</label>
                             <div className="relative">
                                 <select
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all appearance-none cursor-pointer text-white pl-10"
+                                    className="input appearance-none cursor-pointer pl-10"
                                     value={teamId}
                                     onChange={(e) => setTeamId(e.target.value)}
                                 >
-                                    <option value="" className="bg-[#0a0a0a]">Personnel (Aucune équipe)</option>
+                                    <option value="" className="bg-[var(--bg-card)]">Personnel (Aucune équipe)</option>
                                     {teams.map((team) => (
-                                        <option key={team.id} value={team.id} className="bg-[#0a0a0a]">
+                                        <option key={team.id} value={team.id} className="bg-[var(--bg-card)]">
                                             👥 {team.name}
                                         </option>
                                     ))}
                                 </select>
-                                <Users className="w-4 h-4 text-white/30 absolute left-4 top-1/2 -translate-y-1/2" />
+                                <Users className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
                             </div>
                         </div>
                     )}
 
+                    {/* Error */}
                     {error && (
-                        <div className="text-red-500 text-xs bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-center">
+                        <div className="text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-center">
                             {error}
                         </div>
                     )}
 
+                    {/* Submit */}
                     <button
                         type="submit"
                         disabled={loading || !title.trim()}
-                        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
+                        className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                         <span>Créer la tâche</span>
                     </button>
                 </form>
-            </div>
-        </div>
+            </motion.div>
+        </motion.div>
     );
 }

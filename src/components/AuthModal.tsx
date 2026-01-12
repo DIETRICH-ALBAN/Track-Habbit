@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { LogIn, UserPlus, Loader2, Chrome } from "lucide-react";
+import { LogIn, UserPlus, Loader2, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
     const [mode, setMode] = useState<"login" | "signup">("login");
@@ -60,22 +61,36 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="w-full max-w-md glass-morphism p-8 space-y-6">
-                <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-outfit font-bold gradient-text">
-                        {mode === "login" ? "Bon retour !" : "Créer un compte"}
-                    </h2>
-                    <p className="text-white/40 text-sm">
-                        {mode === "login" ? "Connectez-vous pour gérer vos tâches." : "Rejoignez-nous pour optimiser votre quotidien."}
-                    </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-primary)] p-4">
+            {/* Background Glow */}
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[var(--accent-purple)]/10 blur-[120px] rounded-full pointer-events-none" />
+
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+                className="modal-panel w-full max-w-md p-8 space-y-6 relative z-10"
+            >
+                {/* Header */}
+                <div className="text-center space-y-4">
+                    <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                        <Sparkles size={28} className="text-white" />
+                    </div>
+                    <div>
+                        <h2 className="heading-display text-3xl mb-2">
+                            {mode === "login" ? "Bon retour !" : "Créer un compte"}
+                        </h2>
+                        <p className="text-[var(--text-muted)] text-sm">
+                            {mode === "login" ? "Connectez-vous pour gérer vos tâches." : "Rejoignez-nous pour optimiser votre quotidien."}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Google Login Button */}
                 <button
                     onClick={handleGoogleLogin}
                     disabled={googleLoading}
-                    className="w-full flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 py-4 rounded-xl font-semibold transition-all disabled:opacity-50"
+                    className="btn-secondary w-full py-4 disabled:opacity-50"
                 >
                     {googleLoading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -92,30 +107,32 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
                     )}
                 </button>
 
+                {/* Divider */}
                 <div className="flex items-center gap-4">
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-xs text-white/30 uppercase tracking-widest">ou</span>
-                    <div className="flex-1 h-px bg-white/10" />
+                    <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                    <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest">ou</span>
+                    <div className="flex-1 h-px bg-[var(--border-subtle)]" />
                 </div>
 
+                {/* Form */}
                 <form onSubmit={handleAuth} className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Email</label>
+                        <label className="section-label">Email</label>
                         <input
                             type="email"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all"
+                            className="input"
                             placeholder="votre@email.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-widest text-white/30 ml-1">Mot de passe</label>
+                        <label className="section-label">Mot de passe</label>
                         <input
                             type="password"
                             required
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary/50 transition-all"
+                            className="input"
                             placeholder="••••••••"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -123,7 +140,7 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
                     </div>
 
                     {error && (
-                        <div className="text-red-500 text-xs bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-center">
+                        <div className="text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 p-3 rounded-lg text-center">
                             {error}
                         </div>
                     )}
@@ -131,22 +148,23 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 py-4 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
+                        className="btn-primary w-full disabled:opacity-50"
                     >
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : mode === "login" ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                         <span>{mode === "login" ? "Se connecter" : "S'inscrire"}</span>
                     </button>
                 </form>
 
-                <div className="text-center pt-4">
+                {/* Toggle Mode */}
+                <div className="text-center pt-2">
                     <button
                         onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                        className="text-xs text-white/40 hover:text-white transition-colors underline underline-offset-4"
+                        className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-purple-light)] transition-colors"
                     >
                         {mode === "login" ? "Besoin d'un compte ? S'inscrire" : "Déjà un compte ? Se connecter"}
                     </button>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

@@ -3,15 +3,13 @@
 import { useState, useEffect } from "react";
 import {
     Calendar, MessageSquare, Bell, LogOut, Users,
-    ChevronLeft, ChevronRight, LayoutDashboard, Settings,
-    Activity, Cpu, FolderOpen, FileText
+    ChevronLeft, ChevronRight, LayoutDashboard,
+    FileText, Sparkles
 } from "lucide-react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { MiniNeuralSphere } from "./NeuralSphere";
 
 interface SidebarProps {
     onToggleCalendar?: () => void;
@@ -60,51 +58,67 @@ export default function Sidebar({
         { icon: Bell, label: "Alertes", onClick: onToggleNotifications, active: showNotifications },
     ];
 
+    // Mobile Bottom Navigation
     if (isMobile) {
         return (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md h-20 glass-panel rounded-[24px] flex items-center justify-around px-2 z-[100] border-white/10 shadow-2xl">
+            <div className="fixed bottom-4 left-4 right-4 h-16 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl flex items-center justify-around px-2 z-[100]">
                 {navItems.slice(0, 2).map((item, i) => (
-                    <button key={i} onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
-                        className={cn("flex flex-col items-center gap-1 transition-colors", item.active ? "text-indigo-500" : "text-white/30")}>
-                        <item.icon className="w-5 h-5" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">{item.label}</span>
+                    <button
+                        key={i}
+                        onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-xl transition-all",
+                            item.active
+                                ? "text-[var(--accent-purple-light)] bg-[var(--accent-purple)]/10"
+                                : "text-[var(--text-muted)]"
+                        )}
+                    >
+                        <item.icon size={20} />
+                        <span className="text-[10px] font-medium">{item.label}</span>
                     </button>
                 ))}
 
                 {/* Central AI Trigger */}
-                <div className="relative -top-10">
-                    <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={onActivateAI}
-                        className="w-16 h-16 bg-[#0a0a0b] border border-indigo-500/20 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(79,70,229,0.3)] relative z-10 overflow-hidden"
-                    >
-                        <div className="w-12 h-12">
-                            <MiniNeuralSphere active={showAIChat} />
-                        </div>
-                    </motion.button>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl animate-pulse" />
-                </div>
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onActivateAI}
+                    className="w-14 h-14 -mt-8 bg-[var(--gradient-purple)] rounded-2xl flex items-center justify-center shadow-lg relative"
+                    style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}
+                >
+                    <Sparkles size={24} className="text-white" />
+                    <div className="absolute inset-0 rounded-2xl animate-pulse-glow" />
+                </motion.button>
 
                 {navItems.slice(2, 4).map((item, i) => (
-                    <button key={i} onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
-                        className={cn("flex flex-col items-center gap-1 transition-colors", item.active ? "text-indigo-500" : "text-white/30")}>
-                        <item.icon className="w-5 h-5" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest">{item.label}</span>
+                    <button
+                        key={i}
+                        onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-xl transition-all",
+                            item.active
+                                ? "text-[var(--accent-purple-light)] bg-[var(--accent-purple)]/10"
+                                : "text-[var(--text-muted)]"
+                        )}
+                    >
+                        <item.icon size={20} />
+                        <span className="text-[10px] font-medium">{item.label}</span>
                     </button>
                 ))}
             </div>
         );
     }
 
+    // Desktop Sidebar
     return (
         <motion.aside
             initial={false}
-            animate={{ width: isCollapsed ? 84 : 260 }}
-            className="fixed top-0 left-0 bottom-0 glass-panel border-r border-white/5 flex flex-col z-[60] bg-[#030303]/40"
+            animate={{ width: isCollapsed ? 80 : 260 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            className="sidebar fixed top-0 left-0 bottom-0 flex flex-col z-[60]"
         >
-            {/* Logo Area */}
-            <div className="p-6 mb-8 flex items-center justify-between overflow-hidden">
+            {/* Logo */}
+            <div className="h-20 px-5 flex items-center justify-between border-b border-[var(--border-subtle)]">
                 <AnimatePresence mode="wait">
                     {!isCollapsed && (
                         <motion.div
@@ -113,44 +127,44 @@ export default function Sidebar({
                             exit={{ opacity: 0, x: -10 }}
                             className="flex items-center gap-3"
                         >
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(79,70,229,0.3)]">
-                                <Cpu className="w-5 h-5 text-white" />
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
+                                <Sparkles size={18} className="text-white" />
                             </div>
-                            <span className="font-bold tracking-tight text-white">Track Habbit</span>
+                            <div>
+                                <span className="font-semibold text-[15px]">Track Habbit</span>
+                                <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">AI-Powered</p>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-2 hover:bg-white/5 rounded-lg text-white/40 hover:text-white transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-all"
                 >
                     {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
             </div>
 
-            {/* Nav Items */}
-            <nav className="flex-1 px-4 space-y-2">
-                <div className="section-label px-2 mb-4">
-                    {!isCollapsed ? "Menu Principal" : "..."}
+            {/* Navigation */}
+            <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                <div className="section-label px-3 mb-3">
+                    {!isCollapsed ? "Navigation" : ""}
                 </div>
                 {navItems.map((item, i) => (
                     <button
                         key={i}
                         onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
                         className={cn(
-                            "w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all relative group",
-                            item.active ? "bg-indigo-600/10 text-indigo-400" : "text-slate-400 hover:text-white hover:bg-white/5"
+                            "sidebar-item w-full",
+                            item.active && "active"
                         )}
                     >
-                        <item.icon size={20} className={cn("shrink-0", item.active && "text-indigo-500 drop-shadow-[0_0_8px_rgba(79,70,229,0.4)]")} />
+                        <item.icon size={20} />
                         {!isCollapsed && (
-                            <span className="text-sm font-semibold tracking-tight whitespace-nowrap">{item.label}</span>
-                        )}
-                        {item.active && (
-                            <motion.div layoutId="active-pill" className="absolute left-0 w-1 h-6 bg-indigo-600 rounded-r-full shadow-[0_0_10px_rgba(79,70,229,0.6)]" />
+                            <span className="text-sm font-medium">{item.label}</span>
                         )}
                         {isCollapsed && (
-                            <div className="absolute left-16 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity font-bold uppercase tracking-widest z-50 shadow-lg">
+                            <div className="absolute left-20 bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg whitespace-nowrap z-50">
                                 {item.label}
                             </div>
                         )}
@@ -158,12 +172,12 @@ export default function Sidebar({
                 ))}
             </nav>
 
-            {/* Bottom Section */}
-            <div className="p-4 mt-auto border-t border-white/5">
+            {/* Footer */}
+            <div className="p-4 border-t border-[var(--border-subtle)]">
                 <button
                     onClick={handleLogout}
                     className={cn(
-                        "w-full flex items-center gap-4 px-3 py-3 rounded-xl text-white/20 hover:text-red-500 hover:bg-red-500/5 transition-all group",
+                        "sidebar-item w-full hover:text-rose-400 hover:bg-rose-500/10",
                         isCollapsed && "justify-center"
                     )}
                 >
