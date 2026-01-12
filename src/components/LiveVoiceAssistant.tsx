@@ -175,30 +175,40 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         try {
             console.log("[VoiceAssistant] Starting voice session...");
             setStatus("listening");
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            initRecognition();
-            startAudioAnalysis(stream);
+            setErrorMessage("");
 
-            mediaRecorderRef.current = new MediaRecorder(stream);
-            mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
-            mediaRecorderRef.current.onstop = async () => {
-                if (!isMicEnabledRef.current) return;
-                const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-                audioChunksRef.current = [];
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onloadend = () => {
-                    const base64 = reader.result as string;
-                    if (!lastTranscriptRef.current.trim() && !transcript.trim() && isMicEnabledRef.current) {
-                        processMessage("", base64.split(',')[1]);
-                    }
+            // On Mobile: AVOID getUserMedia/AudioContext allowing SpeechRecognition to claim the mic exclusively.
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+            if (!isMobile) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                startAudioAnalysis(stream);
+
+                mediaRecorderRef.current = new MediaRecorder(stream);
+                mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
+                mediaRecorderRef.current.onstop = async () => {
+                    if (!isMicEnabledRef.current) return;
+                    const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                    audioChunksRef.current = [];
+                    // Process audio if needed
                 };
-            };
-            mediaRecorderRef.current.start();
+                mediaRecorderRef.current.start();
+            } else {
+                // Mobile Fallback: Simulate volume for visualizer
+                const simulateVolume = () => {
+                    if (statusRef.current === "listening" && isMicEnabledRef.current) {
+                        setVolume(Math.random() * 0.5 + 0.1);
+                    }
+                    animationFrameRef.current = requestAnimationFrame(simulateVolume);
+                };
+                simulateVolume();
+            }
+
+            initRecognition();
         } catch (err) {
             console.error("[VoiceAssistant] Media error:", err);
             setStatus("error");
-            setErrorMessage("Veuillez autoriser le microphone.");
+            setErrorMessage("Microphone inaccessible.");
         }
     };
 
@@ -446,9 +456,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                     <p className="text-sm text-white/70 italic leading-relaxed">
                                         {mode === "voice" ? (
                                             <>
-                                                <span className="text-white/40">{lastTranscriptRef.current}</span>
-                                                <span className="text-white font-medium">{transcript}</span>
-                                                {!lastTranscriptRef.current && !transcript && "Dites quelque chose..."}
+                                                {/* transcript contient tout le texte maintenant, pas besoin de lastTranscriptRef pour l'affichage pur */}
+                                                <span className="text-white font-medium">{transcript || lastTranscriptRef.current || "Dites quelque chose..."}</span>
                                             </>
                                         ) : (
                                             "Tapez votre demande ci-dessous..."
