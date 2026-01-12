@@ -148,10 +148,9 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
                 if (avg > 15) {
                     lastTalkingTimeRef.current = Date.now();
-                } else if (Date.now() - lastTalkingTimeRef.current > 3000) {
-                    // Auto-submit after 3s of silence
-                    const final = (lastTranscriptRef.current + transcript).trim();
-                    if (final && statusRef.current === "listening") handleVoiceSubmit();
+                } else if (Date.now() - lastTalkingTimeRef.current > 3500) {
+                    // Auto-submit after 3.5s of silence
+                    if (transcript.trim() && statusRef.current === "listening") handleVoiceSubmit();
                 }
             }
             animationFrameRef.current = requestAnimationFrame(update);
@@ -197,13 +196,18 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         recognition.interimResults = true;
 
         recognition.onresult = (event: any) => {
+            let fullText = lastTranscriptRef.current;
             let interim = "";
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const text = event.results[i][0].transcript;
-                if (event.results[i].isFinal) lastTranscriptRef.current += text + " ";
-                else interim += text;
+                if (event.results[i].isFinal) {
+                    lastTranscriptRef.current += text + " ";
+                    fullText = lastTranscriptRef.current;
+                } else {
+                    interim += text;
+                }
             }
-            setTranscript(interim); // We show interim separately for smoothness
+            setTranscript(fullText + interim);
             lastTalkingTimeRef.current = Date.now();
         };
 
@@ -226,7 +230,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     };
 
     const handleVoiceSubmit = () => {
-        const final = (lastTranscriptRef.current + transcript).trim();
+        const final = transcript.trim();
+        console.log("[VoiceAssistant] Submitting:", final);
         if (final) {
             if (recognitionRef.current) try { recognitionRef.current.stop(); } catch (e) { }
             if (mediaRecorderRef.current?.state !== 'inactive') {
@@ -339,7 +344,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
                                     <button
                                         onClick={handleVoiceSubmit}
-                                        disabled={!lastTranscriptRef.current.trim() && !transcript.trim()}
+                                        disabled={!transcript.trim()}
                                         className="btn-primary flex-1 h-14 max-w-[200px] disabled:opacity-30"
                                     >
                                         <Sparkles size={18} />
