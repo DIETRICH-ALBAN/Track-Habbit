@@ -100,7 +100,7 @@ export default function Home() {
   const efficiency = todayTasks.length > 0 ? Math.round((todayDone.length / todayTasks.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)]">
+    <div className="min-h-screen bg-transparent relative z-10">
       {/* Main Layout Container */}
       <div className="flex flex-col md:flex-row min-h-screen">
 

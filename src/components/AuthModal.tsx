@@ -62,7 +62,7 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-primary)] overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent overflow-hidden">
             {/* Immersive Background */}
             <div className="absolute inset-0 z-0 opacity-40">
                 <NeuralSphere active={true} />

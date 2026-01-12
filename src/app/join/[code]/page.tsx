@@ -72,7 +72,7 @@ export default function JoinTeamPage() {
     }, [params.code, supabase, router]);
 
     return (
-        <div className="min-h-screen flex flex-col md:flex-row bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans overflow-x-hidden pb-20 md:pb-0">
+        <div className="min-h-screen flex flex-col md:flex-row bg-transparent text-[var(--text-primary)] font-sans overflow-x-hidden pb-20 md:pb-0 relative z-10">
             {/* Notification Panel Overlay */}
             <AnimatePresence>
                 {showNotifications && (

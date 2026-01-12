@@ -23,7 +23,7 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] p-8 flex items-center justify-center">
+        <div className="min-h-screen bg-transparent text-[var(--text-primary)] p-8 flex items-center justify-center relative z-10">
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-96 bg-[var(--accent-purple)]/5 blur-[120px] pointer-events-none" />
 

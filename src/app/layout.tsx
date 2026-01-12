@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Manage your daily tasks with the help of an advanced AI agent. Import documents, chat in real-time, and stay organized.",
 };
 
+import SplineBackground from "@/components/ui/SplineBackground";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark" suppressHydrationWarning>
-      <body className={`${inter.variable} ${outfit.variable} antialiased relative`}>
+      <body className={`${inter.variable} ${outfit.variable} antialiased relative selection:bg-purple-500/30 selection:text-purple-200`}>
+        <SplineBackground />
         <div className="film-grain" />
         <div className="glow-vignette" />
         {children}

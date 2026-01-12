@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft } from "lucide-react";
 
 export default function AuthErrorPage() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)] p-4 text-center overflow-hidden">
+        <div className="min-h-screen flex items-center justify-center bg-transparent text-[var(--text-primary)] p-4 text-center overflow-hidden relative z-10">
             {/* Background Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-rose-500/10 blur-[120px] rounded-full pointer-events-none" />
 

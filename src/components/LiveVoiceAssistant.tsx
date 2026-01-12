@@ -236,7 +236,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     }, []);
 
     return (
-        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-[var(--bg-primary)] px-6">
+        <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden bg-transparent px-6">
             {/* Background Neural Glow */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl aspect-square bg-[var(--accent-purple)]/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -260,8 +260,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                                 height: status === 'listening' ? [12, 12 + (volume * 140 * (0.5 + Math.random() * 0.5)), 12] : 8
                             }}
                             className={`w-1 rounded-full ${status === 'processing' ? 'bg-[var(--accent-purple)] animate-pulse' :
-                                    status === 'speaking' ? 'bg-[var(--accent-teal)]' :
-                                        'bg-[var(--accent-purple)]'
+                                status === 'speaking' ? 'bg-[var(--accent-teal)]' :
+                                    'bg-[var(--accent-purple)]'
                                 }`}
                         />
                     ))}
@@ -273,8 +273,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className={`w-28 h-28 rounded-3xl border-2 flex items-center justify-center bg-[var(--bg-card)]/80 backdrop-blur-xl shadow-2xl transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-purple)] shadow-[var(--accent-purple)]/20' :
-                                status === 'speaking' ? 'border-[var(--accent-teal)] shadow-[var(--accent-teal)]/20' :
-                                    'border-[var(--border-subtle)]'
+                            status === 'speaking' ? 'border-[var(--accent-teal)] shadow-[var(--accent-teal)]/20' :
+                                'border-[var(--border-subtle)]'
                             }`}
                     >
                         {status === 'processing' ? <Loader2 className="w-10 h-10 text-[var(--accent-purple)] animate-spin" /> :
