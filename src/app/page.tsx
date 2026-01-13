@@ -88,10 +88,22 @@ export default function DashboardPage() {
             <section className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
-                <button onClick={() => setShowTaskForm(true)} className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
-                  <Plus size={14} />
-                  Nouvelle tâche
-                </button>
+                <div className="hidden md:flex items-center gap-6">
+                  <button
+                    onClick={() => setIsAIActive(true)}
+                    className="flex items-center gap-2 text-sm font-bold text-[var(--accent-tan)] hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    <Sparkles size={16} />
+                    Assistant IA
+                  </button>
+                  <button
+                    onClick={() => setShowTaskForm(true)}
+                    className="flex items-center gap-2 text-sm font-bold text-[var(--accent-cyan)] hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    <Plus size={16} />
+                    Nouvelle tâche
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="Total Tâches" value={tasks.length} icon={ListChecks} delay={0} />
