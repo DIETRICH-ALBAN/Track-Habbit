@@ -210,94 +210,95 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     }, [isMobile]);
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-[#030014] lg:bg-[#030014]/95 backdrop-blur-3xl lg:relative lg:inset-auto lg:h-full lg:backdrop-blur-none transition-all duration-500">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-[#0A0A0A]/90 backdrop-blur-3xl lg:relative lg:inset-auto lg:h-full lg:backdrop-blur-none transition-all duration-500">
 
             {/* Header */}
-            <div className="flex items-center justify-between p-6">
-                <div className="flex items-center gap-2">
-                    <Sparkles className="text-[var(--accent-purple)]" size={20} />
-                    <span className="font-bold tracking-tight text-white">Assistant IA</span>
+            <div className="flex items-center justify-between p-8">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--accent-cyan)]/10 flex items-center justify-center text-[var(--accent-cyan)]">
+                        <Sparkles size={20} />
+                    </div>
+                    <span className="text-xl font-black tracking-tight text-white uppercase tracking-widest">Assistant <span className="text-[var(--accent-tan)]">Vocal</span></span>
                 </div>
-                <button onClick={onClose} className="p-2 text-white/60 hover:text-white transition-colors">
-                    <X size={24} />
+                <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-white/40 hover:text-white transition-all border border-white/5">
+                    <X size={20} />
                 </button>
             </div>
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col items-center justify-center px-4 relative">
-
                 {/* Status Indicator */}
-                <div className="absolute top-10 flex flex-col items-center gap-4">
-                    <div className={`relative flex items-center justify-center transition-all duration-500 ${status === 'listening' ? 'scale-110' : 'scale-100'
-                        }`}>
-                        <div className={`w-32 h-32 rounded-full flex items-center justify-center border-4 transition-all duration-500 ${status === 'listening' ? 'border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.4)] bg-purple-500/10' :
+                <div className="absolute top-10 flex flex-col items-center gap-6">
+                    <div className={`relative flex items-center justify-center transition-all duration-700 ${status === 'listening' ? 'scale-110' : 'scale-100'}`}>
+                        <div className={`w-40 h-40 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-cyan)] shadow-[0_0_60px_rgba(6,182,212,0.3)] bg-[var(--accent-cyan)]/10' :
                             status === 'processing' ? 'border-white/20 animate-pulse' :
-                                status === 'speaking' ? 'border-cyan-400 shadow-[0_0_40px_rgba(34,211,238,0.4)] bg-cyan-400/10' :
-                                    'border-white/10 bg-white/[0.02]'
+                                status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_60px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
+                                    'border-white/5 bg-white/[0.02]'
                             }`}>
-                            {status === 'processing' ? <Loader2 size={40} className="text-white animate-spin" /> :
-                                status === 'speaking' ? <Volume2 size={40} className="text-cyan-400 animate-bounce" /> :
-                                    status === 'listening' ? <Mic size={40} className="text-purple-400" /> :
-                                        <Sparkles size={40} className="text-white/20" />}
+                            {status === 'processing' ? <Loader2 size={48} className="text-white animate-spin" /> :
+                                status === 'speaking' ? <Volume2 size={48} className="text-[var(--accent-tan)] animate-pulse" /> :
+                                    status === 'listening' ? <Mic size={48} className="text-[var(--accent-cyan)]" /> :
+                                        <Sparkles size={48} className="text-white/10" />}
                         </div>
+                        {/* Orbiting Ring for Listening Mode */}
+                        {status === 'listening' && (
+                            <div className="absolute inset-[-15px] border border-[var(--accent-cyan)]/20 rounded-full animate-[spin_4s_linear_infinite]" />
+                        )}
                     </div>
-                    <p className="text-white/60 font-medium animate-pulse">
-                        {status === 'listening' ? "Je vous écoute..." :
-                            status === 'processing' ? "Réflexion..." :
-                                status === 'speaking' ? "Je réponds..." :
-                                    "Prêt"}
+                    <p className="text-sm font-black uppercase tracking-[0.3em] text-[var(--accent-tan)]">
+                        {status === 'listening' ? "ÉCOUTE EN COURS" :
+                            status === 'processing' ? "RÉFLEXION" :
+                                status === 'speaking' ? "RÉPONSE" :
+                                    "PRÊT À VOUS AIDER"}
                     </p>
                 </div>
 
-                {/* Chat/Transcript Area */}
-                <div className="w-full max-w-md mt-32 space-y-6 flex-1 min-h-0 flex flex-col">
-                    <div className="flex-1 min-h-[120px] max-h-[50vh] bg-white/[0.05] rounded-3xl p-6 border border-white/10 flex flex-col items-center text-center overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+                {/* Transcript Area */}
+                <div className="w-full max-w-lg mt-40 space-y-6 flex-1 min-h-0 flex flex-col">
+                    <div
+                        className="flex-1 min-h-[160px] max-h-[40vh] rounded-[32px] p-8 border border-white/5 flex flex-col items-center justify-center text-center overflow-y-auto scrollbar-hide backdrop-blur-md"
+                        style={{ background: 'var(--bg-glass-gradient)' }}
+                    >
                         {textInput || transcript ? (
-                            <p className="text-xl text-white font-medium leading-relaxed break-words w-full">
+                            <p className="text-2xl text-white font-bold leading-tight break-words w-full">
                                 {transcript || textInput}
                             </p>
                         ) : (
-                            <p className="text-white/30 italic">
-                                Appuyez sur le micro pour parler ou écrivez votre message...
+                            <p className="text-white/20 font-medium tracking-wide">
+                                Appuyez sur le micro pour parler<br />ou tapez votre message...
                             </p>
                         )}
                     </div>
                 </div>
 
                 {errorMessage && (
-                    <div className="mt-4 px-4 py-2 bg-rose-500/20 text-rose-300 rounded-lg border border-rose-500/30 text-sm font-medium">
+                    <div className="mt-6 px-6 py-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20 text-sm font-bold tracking-tight uppercase">
                         {errorMessage}
                     </div>
                 )}
             </div>
 
             {/* Controls */}
-            <div className="p-6 pb-8 w-full max-w-md mx-auto">
-                <div className="flex items-end gap-3">
-                    {/* Voice Toggle Button - The STAR of the show on Mobile */}
+            <div className="p-8 pb-12 w-full max-w-lg mx-auto">
+                <div className="flex items-end gap-4">
                     <button
-                        onClick={() => {
-                            if (status === 'listening') {
-                                stopListeningAndSend();
-                            } else {
-                                startListening();
-                            }
-                        }}
-                        className={`w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all duration-300 shadow-xl ${status === 'listening'
-                            ? 'bg-rose-500 text-white translate-y-0 shadow-rose-500/30'
-                            : 'bg-purple-600 text-white -translate-y-0 shadow-purple-600/30 hover:bg-purple-500'
+                        onClick={() => status === 'listening' ? stopListeningAndSend() : startListening()}
+                        className={`w-20 h-20 rounded-[24px] flex-shrink-0 flex items-center justify-center transition-all duration-500 shadow-2xl relative group overflow-hidden ${status === 'listening' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-[var(--accent-cyan)] shadow-[var(--accent-cyan)]/30'
                             }`}
                     >
-                        {status === 'listening' ? <Send size={28} className="ml-1" /> : <Mic size={28} />}
+                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {status === 'listening' ? <Send size={32} className="relative z-10" /> : <Mic size={32} className="relative z-10" />}
                     </button>
 
-                    {/* Text Input Area */}
-                    <div className="flex-1 bg-white/[0.05] rounded-2xl p-2 border border-white/10 flex items-center gap-2">
+                    <div
+                        className="flex-1 rounded-[24px] p-2 border border-white/5 flex items-center gap-2 backdrop-blur-md"
+                        style={{ background: 'var(--bg-glass-gradient)' }}
+                    >
                         <input
                             value={textInput}
                             onChange={(e) => setTextInput(e.target.value)}
-                            placeholder="Écrire..."
-                            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 px-3 h-12"
+                            placeholder="Écrivez votre commande..."
+                            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 px-5 h-16 text-lg font-medium"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
@@ -308,16 +309,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                         {textInput.trim() && status !== 'listening' && (
                             <button
                                 onClick={() => stopListeningAndSend()}
-                                className="p-3 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-colors"
+                                className="w-12 h-12 bg-[var(--accent-tan)]/10 text-[var(--accent-tan)] rounded-xl hover:bg-[var(--accent-tan)]/20 transition-all flex items-center justify-center"
                             >
                                 <Send size={20} />
                             </button>
                         )}
                     </div>
                 </div>
-                <p className="text-center text-white/20 text-xs mt-4">
-                    Track Habbit AI • v2.0
-                </p>
+                <div className="flex items-center justify-center gap-2 mt-8 opacity-20">
+                    <Activity size={12} className="text-[var(--accent-cyan)]" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Track Habbit AI Core</span>
+                </div>
             </div>
         </div>
     );

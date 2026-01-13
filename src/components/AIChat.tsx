@@ -200,14 +200,15 @@ export default function AIChat({ onTaskCreated, initialMessage, onMessageProcess
             </div>
 
             {/* Messages */}
-            <div className="flex-1 card p-6 mb-4 overflow-y-auto space-y-4">
+            <div
+                className="flex-1 p-6 mb-4 overflow-y-auto space-y-4 rounded-[32px] border border-white/5 backdrop-blur-md"
+                style={{ background: 'var(--bg-glass-gradient)' }}
+            >
                 {messages.length === 0 && historyLoaded && (
                     <div className="text-center py-12">
-                        <div className="icon-box w-16 h-16 mx-auto mb-4">
-                            <MessageSquare className="w-8 h-8" />
-                        </div>
-                        <p className="text-[var(--text-muted)] text-sm">
-                            Bonjour ! Posez-moi une question ou demandez-moi de créer une tâche.
+                        <Sparkles size={48} className="text-white/10 mx-auto mb-4" />
+                        <p className="text-[var(--text-secondary)] text-sm font-medium">
+                            Bonjour ! Comment puis-je vous aider aujourd'hui ?
                         </p>
                     </div>
                 )}
@@ -218,13 +219,15 @@ export default function AIChat({ onTaskCreated, initialMessage, onMessageProcess
                         className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                     >
                         <div
-                            className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === "user"
-                                ? "text-white rounded-br-md"
-                                : "bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)] rounded-bl-md"
+                            className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-lg ${msg.role === "user"
+                                ? "text-white rounded-br-none"
+                                : "bg-white/5 text-white border border-white/5 rounded-bl-none"
                                 }`}
-                            style={msg.role === "user" ? { background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' } : {}}
+                            style={msg.role === "user" ? { background: 'linear-gradient(135deg, #06B6D4 0%, #0EA5E9 100%)' } : {}}
                         >
-                            {cleanContent(msg.content)}
+                            <div className={msg.role === "user" ? "text-white font-medium" : "text-white"}>
+                                {cleanContent(msg.content)}
+                            </div>
                             {renderActionIndicators(msg.actions)}
                         </div>
                     </div>
@@ -232,8 +235,8 @@ export default function AIChat({ onTaskCreated, initialMessage, onMessageProcess
 
                 {loading && (
                     <div className="flex justify-start">
-                        <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-2xl px-4 py-3">
-                            <Loader2 className="w-5 h-5 animate-spin text-[var(--accent-purple)]" />
+                        <div className="bg-white/5 border border-white/5 rounded-2xl px-4 py-3">
+                            <Loader2 className="w-5 h-5 animate-spin text-[var(--accent-cyan)]" />
                         </div>
                     </div>
                 )}
@@ -242,19 +245,23 @@ export default function AIChat({ onTaskCreated, initialMessage, onMessageProcess
             </div>
 
             {/* Input */}
-            <form onSubmit={sendMessage} className="card p-2 flex gap-2">
+            <form
+                onSubmit={sendMessage}
+                className="p-2 flex gap-2 rounded-2xl border border-white/5 backdrop-blur-md"
+                style={{ background: 'var(--bg-glass-gradient)' }}
+            >
                 <input
                     type="text"
-                    placeholder="Créer une tâche, poser une question..."
+                    placeholder="Posez une question..."
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="flex-1 bg-transparent px-4 py-3 focus:outline-none text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    className="flex-1 bg-transparent px-4 py-3 focus:outline-none text-sm text-white placeholder:text-white/20"
                     disabled={loading}
                 />
                 <button
                     type="submit"
                     disabled={loading || !input.trim()}
-                    className="btn-primary px-4 disabled:opacity-50"
+                    className="w-12 h-12 rounded-xl bg-[var(--accent-cyan)] flex items-center justify-center text-white disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-[var(--accent-cyan)]/20"
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>

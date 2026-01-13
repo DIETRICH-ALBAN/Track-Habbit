@@ -76,7 +76,8 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
-                className="modal-panel w-full max-w-md p-10 space-y-8 relative z-10 mx-4"
+                className="w-full max-w-md p-10 space-y-8 relative z-10 mx-4 rounded-[40px] border border-white/10 backdrop-blur-2xl shadow-[0_32px_128px_rgba(0,0,0,0.5)]"
+                style={{ background: 'var(--bg-glass-gradient)' }}
             >
                 {/* Header */}
                 <div className="text-center space-y-4">
@@ -85,15 +86,15 @@ export default function AuthModal({ onSuccess }: { onSuccess: () => void }) {
                         animate={{ rotate: 0, scale: 1 }}
                         transition={{ duration: 0.5, delay: 0.2 }}
                         className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center shadow-2xl"
-                        style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}
+                        style={{ background: 'linear-gradient(135deg, #06B6D4 0%, #0EA5E9 100%)' }}
                     >
                         <Sparkles size={32} className="text-white" />
                     </motion.div>
                     <div>
-                        <h2 className="heading-display text-3xl mb-2">
-                            {mode === "login" ? "Track Habbit" : "Nouveau Compte"}
+                        <h2 className="text-3xl font-black text-white tracking-tight mb-2">
+                            {mode === "login" ? <>Track <span className="text-[var(--accent-tan)]">Habbit</span></> : <>Nouveau <span className="text-[var(--accent-tan)]">Compte</span></>}
                         </h2>
-                        <p className="text-[var(--text-muted)] text-sm px-4">
+                        <p className="text-[var(--text-secondary)] text-sm px-4">
                             {mode === "login"
                                 ? "Authentifiez-vous pour accéder à votre espace IA."
                                 : "Commencez votre voyage vers une productivité augmentée."}

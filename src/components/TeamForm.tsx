@@ -66,24 +66,25 @@ export default function TeamForm({ onClose, onSuccess }: TeamFormProps) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-                className="modal-panel w-full max-w-md p-8 space-y-6 relative"
+                className="w-full max-w-md p-8 space-y-8 relative rounded-[32px] border border-white/10 backdrop-blur-xl shadow-2xl"
+                style={{ background: 'var(--bg-glass-gradient)' }}
             >
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 icon-box icon-box-sm hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/30 transition-all"
+                    className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 text-white/40 hover:text-white transition-all"
                 >
-                    <X size={16} />
+                    <X size={18} />
                 </button>
 
                 {/* Header */}
                 <div className="text-center space-y-4">
-                    <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)' }}>
-                        <Users size={28} className="text-white" />
+                    <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #06B6D4 0%, #0EA5E9 100%)' }}>
+                        <Users size={32} className="text-white" />
                     </div>
                     <div>
-                        <h2 className="heading-display text-2xl">Nouvelle <span className="heading-serif">Équipe</span></h2>
-                        <p className="text-[var(--text-muted)] text-sm mt-2">Créez un espace collaboratif pour vos projets.</p>
+                        <h2 className="text-2xl font-black text-white tracking-tight">Nouvelle <span className="text-[var(--accent-tan)]">Équipe</span></h2>
+                        <p className="text-[var(--text-secondary)] text-sm mt-2">Créez un espace collaboratif pour vos projets.</p>
                     </div>
                 </div>
 

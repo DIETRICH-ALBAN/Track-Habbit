@@ -24,39 +24,42 @@ export function TaskCard({ task, onClick, index = 0 }: TaskCardProps) {
             transition={{ duration: 0.4, delay: index * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
             onClick={onClick}
             className={cn(
-                "card p-4 flex items-center gap-4 group cursor-pointer",
+                "p-4 flex items-center gap-4 group cursor-pointer rounded-[20px] border border-white/5 transition-all duration-300 hover:border-[var(--accent-cyan)]/40 hover:shadow-[0_8px_24px_-8px_rgba(6,182,212,0.2)] backdrop-blur-md",
                 isDone && "opacity-50"
             )}
+            style={{ background: 'var(--bg-glass-gradient)' }}
         >
             {/* Check Button */}
             <button
                 className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition-all duration-200",
+                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all duration-300",
                     isDone
-                        ? "bg-[var(--accent-purple)] border-[var(--accent-purple)] text-white"
-                        : "border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--accent-purple)] hover:text-[var(--accent-purple)]"
+                        ? "bg-[var(--accent-cyan)] border-[var(--accent-cyan)] text-[var(--bg-primary)] scale-110"
+                        : "border-[var(--accent-steel)] text-transparent hover:border-[var(--accent-cyan)]"
                 )}
             >
-                {isDone ? <CheckCircle2 size={16} /> : <Sparkles size={14} />}
+                <CheckCircle2 size={14} className={cn("transition-transform", isDone ? "scale-100" : "scale-0")} />
             </button>
 
             {/* Content */}
             <div className="flex-1 min-w-0">
                 <h3 className={cn(
                     "font-medium text-[15px] truncate transition-all",
-                    isDone && "line-through text-[var(--text-muted)]"
+                    isDone ? "line-through text-white/30" : "text-white"
                 )}>
                     {task.title}
                 </h3>
-                <div className="flex items-center gap-3 mt-1">
+                <div className="flex items-center gap-3 mt-1.5">
                     {task.due_date && (
-                        <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
+                        <div className="flex items-center gap-1.5 text-[var(--accent-blue)]">
                             <Clock size={12} />
-                            <span className="text-xs">{format(parseISO(task.due_date), "HH:mm")}</span>
+                            <span className="text-[11px] font-medium">{format(parseISO(task.due_date), "HH:mm")}</span>
                         </div>
                     )}
                     {task.team && (
-                        <span className="badge">{task.team.name}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-[var(--text-secondary)] border border-white/5">
+                            {task.team.name}
+                        </span>
                     )}
                 </div>
             </div>
@@ -64,16 +67,16 @@ export function TaskCard({ task, onClick, index = 0 }: TaskCardProps) {
             {/* Status & Arrow */}
             <div className="flex items-center gap-3">
                 <span className={cn(
-                    "text-xs font-medium px-3 py-1.5 rounded-full",
+                    "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider",
                     isDone
                         ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                        : "bg-[var(--accent-tan)]/10 text-[var(--accent-tan)]"
                 )}>
                     {isDone ? "Terminé" : "En cours"}
                 </span>
                 <ChevronRight
-                    size={18}
-                    className="text-[var(--text-muted)] group-hover:text-[var(--accent-purple)] group-hover:translate-x-1 transition-all"
+                    size={16}
+                    className="text-white/20 group-hover:text-[var(--accent-cyan)] group-hover:translate-x-1 transition-all"
                 />
             </div>
         </motion.div>

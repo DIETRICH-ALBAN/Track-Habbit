@@ -128,7 +128,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                             <div
                                 key={n.id}
                                 onClick={() => markAsRead(n.id)}
-                                className={`card p-4 cursor-pointer transition-all ${!n.read ? 'border-[var(--accent-purple)]/30 bg-[var(--accent-purple)]/5' : ''}`}
+                                className={`p-4 rounded-[20px] transition-all border border-white/5 cursor-pointer backdrop-blur-md ${!n.read ? 'border-[var(--accent-cyan)]/30' : ''}`}
+                                style={{ background: 'var(--bg-glass-gradient)' }}
                             >
                                 <div className="flex items-start gap-4">
                                     <div className={`p-2.5 rounded-xl ${styles.bg} ${styles.text}`}>
@@ -137,18 +138,18 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
                                                 <Users size={16} />}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className={`text-sm font-semibold ${n.read ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
+                                        <h3 className={`text-sm font-bold ${n.read ? 'text-[var(--text-secondary)]' : 'text-white'}`}>
                                             {n.title}
                                         </h3>
                                         <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2 leading-relaxed">
                                             {n.description}
                                         </p>
-                                        <span className="text-[10px] text-[var(--text-muted)] mt-2 block uppercase tracking-wider">
+                                        <span className="text-[10px] text-[var(--accent-tan)] mt-2 block uppercase tracking-wider font-bold">
                                             {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: fr })}
                                         </span>
                                     </div>
                                     {!n.read && (
-                                        <div className="w-2.5 h-2.5 bg-[var(--accent-purple)] rounded-full mt-1 animate-pulse" />
+                                        <div className="w-2 h-2 bg-[var(--accent-cyan)] rounded-full mt-1.5 animate-pulse" />
                                     )}
                                 </div>
                             </div>

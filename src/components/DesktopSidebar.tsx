@@ -95,11 +95,11 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
                             className={cn(
                                 "w-full flex items-center gap-4 py-3.5 px-4 rounded-xl transition-all duration-200 group relative",
                                 isActive
-                                    ? "bg-[#222222] text-white shadow-sm"
-                                    : "text-white/40 hover:text-white hover:bg-[#1a1a1a]"
+                                    ? "bg-[var(--accent-cyan)]/10 text-[var(--accent-cyan)] shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                                    : "text-white/40 hover:text-white hover:bg-white/5"
                             )}
                         >
-                            <item.icon size={22} className={cn("shrink-0 transition-colors", isActive ? "text-white" : "group-hover:text-white")} />
+                            <item.icon size={22} className={cn("shrink-0 transition-colors", isActive ? "text-[var(--accent-cyan)]" : "group-hover:text-white")} />
 
                             {!isCollapsed && (
                                 <motion.span
