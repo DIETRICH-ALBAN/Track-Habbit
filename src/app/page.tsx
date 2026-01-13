@@ -107,7 +107,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-white font-sans">
 
-      <div className="relative z-10 flex flex-col min-h-screen pb-28 md:pb-0">
+      <div className="relative z-10 flex flex-col min-h-screen pb-28">
 
         {/* HEADER */}
         <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-b border-[var(--border-subtle)] px-5 md:px-8 py-4 flex items-center justify-between">
