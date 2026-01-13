@@ -24,6 +24,8 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { NeuralSphere } from "@/components/NeuralSphere"; // Kept for imports but unused
 import SplineObject from "@/components/SplineObject";
+import { DesktopSidebar } from "@/components/DesktopSidebar";
+import { MobileTabBar } from "@/components/MobileTabBar";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -73,50 +75,104 @@ export default function DashboardPage() {
   const doneTasks = tasks.filter(t => t.status === 'done');
   const efficiency = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
 
-  // --- FLOATING TAB BAR COMPONENT (Visible on all devices) ---
-  const FloatingTabBar = () => (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg">
-      <div className="flex items-center justify-between bg-[var(--bg-card)] backdrop-blur-xl border border-[var(--border-default)] rounded-[24px] px-5 py-3 shadow-lg">
-        <button onClick={() => setActiveTab('home')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'home' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
-          <LayoutGrid size={22} />
-        </button>
+  const renderContent = () => {
+    switch (activeTab) {
+      case "home":
+      case "dashboard":
+        return (
+          <>
+            {/* STATS ROW */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
+                <button onClick={() => setShowTaskForm(true)} className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
+                  <Plus size={14} />
+                  Nouvelle tâche
+                </button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total Tâches" value={tasks.length} icon={ListChecks} delay={0} />
+                <StatCard label="En Cours" value={todoTasks.length} icon={Activity} trend="neutral" delay={0.05} />
+                <StatCard label="Aujourd'hui" value={todayTasks.length} icon={Clock} trend="up" trendValue={`+${todayTasks.length}`} delay={0.1} />
+                <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} trend={efficiency > 50 ? "up" : "down"} trendValue={efficiency > 50 ? "Bon" : "À améliorer"} delay={0.15} />
+              </div>
+            </section>
 
-        <button onClick={() => setActiveTab('calendar')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'calendar' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
-          <Clock size={22} />
-        </button>
+            {/* TASKS SECTION */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
+                <span className="text-xs text-[var(--text-tertiary)]">{todoTasks.length} restantes</span>
+              </div>
 
-        {/* CENTRAL AI FAB */}
-        <button
-          onClick={() => setIsAIActive(true)}
-          className="w-14 h-14 -mt-6 bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] rounded-full flex items-center justify-center text-white shadow-lg shadow-[var(--accent-cyan)]/30 border-[3px] border-[var(--bg-primary)] active:scale-95 transition-transform"
-        >
-          <Sparkles size={24} />
-        </button>
-
-        <button onClick={() => setActiveTab('stats')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'stats' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
-          <Activity size={22} />
-        </button>
-
-        <button onClick={() => setShowTaskForm(true)} className="p-2.5 rounded-xl text-white/40 hover:text-[var(--accent-tan)] transition-colors">
-          <Plus size={22} />
-        </button>
-      </div>
-    </div>
-  );
+              <div className="space-y-3">
+                {todoTasks.length > 0 ? todoTasks.slice(0, 7).map((task, i) => (
+                  <motion.div
+                    key={task.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    onClick={() => toggleTaskStatus(task)}
+                    className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] bg-[var(--bg-card)] border border-[var(--border-subtle)] cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 hover:bg-[var(--bg-card-hover)]"
+                  >
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-[var(--accent-steel)]'}`}>
+                      {task.status === 'done' && <CheckCircle2 size={10} className="text-[var(--bg-primary)]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-medium text-base leading-snug truncate ${task.status === 'done' ? 'line-through text-white/30' : 'text-white'}`}>{task.title}</h3>
+                      {task.due_date && (
+                        <p className="text-[11px] text-[var(--accent-blue)] mt-0.5">
+                          {format(new Date(task.due_date), "dd MMM • HH:mm", { locale: fr })}
+                        </p>
+                      )}
+                    </div>
+                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${task.priority === 'high' ? 'bg-rose-500/15 text-rose-400' :
+                      task.priority === 'medium' ? 'bg-[var(--accent-tan)]/15 text-[var(--accent-tan)]' :
+                        'bg-white/5 text-white/30'
+                      }`}>
+                      {task.priority || 'normal'}
+                    </div>
+                  </motion.div>
+                )) : (
+                  <div className="py-16 text-center rounded-[var(--radius-lg)] bg-[var(--bg-card)]/50 border border-dashed border-[var(--border-subtle)]">
+                    <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
+                    <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche en cours.</p>
+                    <button onClick={() => setShowTaskForm(true)} className="mt-4 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
+                      Créer votre première tâche
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        );
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center py-20 bg-[var(--bg-card)]/30 rounded-[var(--radius-xl)] border border-dashed border-[var(--border-subtle)]">
+            <Cpu size={48} className="text-[var(--accent-cyan)] opacity-20 mb-4" />
+            <h3 className="text-xl font-medium text-white/40">Section "{activeTab}"</h3>
+            <p className="text-sm text-white/20 mt-2">Cette fonctionnalité est en cours de développement.</p>
+          </div>
+        );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-white font-sans">
+    <div className="flex min-h-screen bg-[var(--bg-primary)] text-white font-sans overflow-hidden">
 
-      <div className="relative z-10 flex flex-col min-h-screen pb-28">
+      {/* PC Menu (Desktop Sidebar - Reference Image Style) */}
+      <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto pb-28 md:pb-0 scroll-smooth">
 
         {/* HEADER */}
-        <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-b border-[var(--border-subtle)] px-5 md:px-8 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-b border-[var(--border-subtle)] px-5 md:px-8 py-4 flex items-center justify-between shrink-0">
           <div>
             <p className="text-[11px] font-bold tracking-[0.15em] text-[var(--accent-tan)] uppercase">
               {format(currentTime, "EEEE d MMMM", { locale: fr })}
             </p>
             <h1 className="text-xl md:text-2xl font-semibold tracking-tight mt-0.5">
-              Dashboard
+              {activeTab === 'home' ? 'Dashboard' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -135,75 +191,16 @@ export default function DashboardPage() {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 px-4 md:px-8 py-6 space-y-8 max-w-6xl mx-auto w-full">
-
-          {/* STATS ROW - Dashboard Style (4 cards) */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
-              <button onClick={() => setShowTaskForm(true)} className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
-                <Plus size={14} />
-                Nouvelle tâche
-              </button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard label="Total Tâches" value={tasks.length} icon={ListChecks} delay={0} />
-              <StatCard label="En Cours" value={todoTasks.length} icon={Activity} trend="neutral" delay={0.05} />
-              <StatCard label="Aujourd'hui" value={todayTasks.length} icon={Clock} trend="up" trendValue={`+${todayTasks.length}`} delay={0.1} />
-              <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} trend={efficiency > 50 ? "up" : "down"} trendValue={efficiency > 50 ? "Bon" : "À améliorer"} delay={0.15} />
-            </div>
-          </section>
-
-          {/* TASKS SECTION */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
-              <span className="text-xs text-[var(--text-tertiary)]">{todoTasks.length} restantes</span>
-            </div>
-
-            <div className="space-y-3">
-              {todoTasks.length > 0 ? todoTasks.slice(0, 7).map((task, i) => (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  onClick={() => toggleTaskStatus(task)}
-                  className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] bg-[var(--bg-card)] border border-[var(--border-subtle)] cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 hover:bg-[var(--bg-card-hover)]"
-                >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-[var(--accent-steel)]'}`}>
-                    {task.status === 'done' && <CheckCircle2 size={10} className="text-[var(--bg-primary)]" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`font-medium text-base leading-snug truncate ${task.status === 'done' ? 'line-through text-white/30' : 'text-white'}`}>{task.title}</h3>
-                    {task.due_date && (
-                      <p className="text-[11px] text-[var(--accent-blue)] mt-0.5">
-                        {format(new Date(task.due_date), "dd MMM • HH:mm", { locale: fr })}
-                      </p>
-                    )}
-                  </div>
-                  <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${task.priority === 'high' ? 'bg-rose-500/15 text-rose-400' :
-                    task.priority === 'medium' ? 'bg-[var(--accent-tan)]/15 text-[var(--accent-tan)]' :
-                      'bg-white/5 text-white/30'
-                    }`}>
-                    {task.priority || 'normal'}
-                  </div>
-                </motion.div>
-              )) : (
-                <div className="py-16 text-center rounded-[var(--radius-lg)] bg-[var(--bg-card)]/50 border border-dashed border-[var(--border-subtle)]">
-                  <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
-                  <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche en cours.</p>
-                  <button onClick={() => setShowTaskForm(true)} className="mt-4 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
-                    Créer votre première tâche
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
-
+          {renderContent()}
         </main>
 
-        {/* Floating Navigation (Mobile) */}
-        <FloatingTabBar />
+        {/* Floating Navigation (Mobile Only) */}
+        <MobileTabBar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          setIsAIActive={setIsAIActive}
+          setShowTaskForm={setShowTaskForm}
+        />
 
       </div>
 
