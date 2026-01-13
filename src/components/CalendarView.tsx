@@ -43,7 +43,7 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
     const selectedDayTasks = selectedDate ? getDayTasks(selectedDate) : [];
 
     return (
-        <div className="flex flex-col lg:flex-row gap-8 h-full relative z-10">
+        <div className="flex flex-col xl:flex-row gap-8 h-full relative z-10">
             {/* Calendar Grid */}
             <div
                 className="p-8 rounded-[32px] border border-white/5 flex-1 min-h-[400px] flex flex-col backdrop-blur-md shadow-2xl"
@@ -108,7 +108,7 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
 
             {/* Selected Day Tasks */}
             <div
-                className="w-full lg:w-[400px] p-8 rounded-[32px] border border-white/5 flex flex-col backdrop-blur-md shadow-2xl"
+                className="w-full xl:w-[400px] p-8 rounded-[32px] border border-white/5 flex flex-col backdrop-blur-md shadow-2xl"
                 style={{ background: 'var(--bg-glass-gradient)' }}
             >
                 <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5">

@@ -88,7 +88,7 @@ export default function DashboardPage() {
             <section className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
-                <div className="hidden md:flex items-center gap-6">
+                <div className="hidden md:flex items-center gap-3 lg:gap-6">
                   <button
                     onClick={() => setIsAIActive(true)}
                     className="flex items-center gap-2 text-sm font-bold text-[var(--accent-tan)] hover:text-white transition-colors uppercase tracking-wider"
@@ -105,7 +105,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className={`grid gap-4 transition-all duration-300 ${isAIActive ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4'}`}>
                 <StatCard label="Total Tâches" value={tasks.length} icon={ListChecks} delay={0} />
                 <StatCard label="En Cours" value={todoTasks.length} icon={Activity} trend="neutral" delay={0.05} />
                 <StatCard label="Aujourd'hui" value={todayTasks.length} icon={Clock} trend="up" trendValue={`+${todayTasks.length}`} delay={0.1} />
