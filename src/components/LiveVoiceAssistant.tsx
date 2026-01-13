@@ -1,3 +1,7 @@
+/* 
+   LOCKED COMPONENT - DO NOT MODIFY WITHOUT EXPLICIT PERMISSION
+   STABLE VERSION: HYBRID PUSH-TO-TALK
+*/
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";

@@ -59,48 +59,45 @@ export default function Sidebar({
     ];
 
     // Mobile Bottom Navigation
+    // Mobile Floating Navigation
     if (isMobile) {
         return (
-            <div className="fixed bottom-6 left-6 right-6 h-16 bg-[#030014]/80 backdrop-blur-2xl border border-white/10 rounded-2xl flex items-center justify-around px-2 z-[100] shadow-[0_-8px_30px_rgba(0,0,0,0.5)]">
+            <div className="floating-tab-bar">
+                {/* Left Group */}
                 {navItems.slice(0, 2).map((item, i) => (
                     <button
                         key={i}
                         onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 transition-all",
-                            item.active
-                                ? "text-cyan-400"
-                                : "text-white/40"
+                            "nav-item",
+                            item.active && "active"
                         )}
                     >
-                        <item.icon size={20} className={cn(item.active && "drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]")} />
+                        <item.icon size={26} strokeWidth={item.active ? 2.5 : 2} />
                     </button>
                 ))}
 
-                {/* Central AI Trigger */}
+                {/* Central AI Trigger - Corn Revolution Style */}
                 <motion.button
-                    whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={onActivateAI}
-                    className="w-14 h-14 -mt-10 rounded-2xl flex items-center justify-center relative overflow-hidden group shadow-[0_0_20px_rgba(157,78,221,0.3)]"
+                    className="w-16 h-16 rounded-full flex items-center justify-center relative shadow-[0_8px_32px_rgba(0,240,255,0.4)] transition-all z-50 hover:scale-105 active:scale-95"
+                    style={{ background: 'var(--accent-cyan)' }}
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#9d4edd] via-[#f72585] to-[#4361ee] animate-gradient-xy" />
-                    <Sparkles size={24} className="text-white relative z-10" />
-                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Sparkles size={28} className="text-black fill-black" />
                 </motion.button>
 
+                {/* Right Group */}
                 {navItems.slice(3, 5).map((item, i) => (
                     <button
                         key={i}
                         onClick={() => item.href ? window.location.href = item.href : item.onClick?.()}
                         className={cn(
-                            "flex flex-col items-center gap-1 p-2 transition-all",
-                            item.active
-                                ? "text-cyan-400"
-                                : "text-white/40"
+                            "nav-item",
+                            item.active && "active"
                         )}
                     >
-                        <item.icon size={20} className={cn(item.active && "drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]")} />
+                        <item.icon size={26} strokeWidth={item.active ? 2.5 : 2} />
                     </button>
                 ))}
             </div>
