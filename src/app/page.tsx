@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
 import TaskForm from "@/components/TaskForm";
+import TeamForm from "@/components/TeamForm";
 import AIChat from "@/components/AIChat";
 import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
 import DocumentImport from "@/components/DocumentImport";
@@ -74,6 +75,8 @@ export default function DashboardPage() {
   const todayTasks = tasks.filter(t => t.due_date && new Date(t.due_date).getDate() === new Date().getDate());
   const doneTasks = tasks.filter(t => t.status === 'done');
   const efficiency = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
+
+  const [showTeamForm, setShowTeamForm] = useState(false);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -146,6 +149,110 @@ export default function DashboardPage() {
             </section>
           </>
         );
+      case "calendar":
+        return (
+          <div className="h-[calc(100vh-200px)]">
+            <CalendarView tasks={tasks} onTaskClick={(task) => toggleTaskStatus(task)} />
+          </div>
+        );
+      case "chat":
+        return (
+          <div className="h-[calc(100vh-200px)] flex flex-col">
+            <AIChat onTaskCreated={fetchTasks} />
+          </div>
+        );
+      case "teams":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Mes Équipes</h2>
+              <button
+                onClick={() => setShowTeamForm(true)}
+                className="btn-primary"
+              >
+                <Plus size={18} />
+                Nouvelle Équipe
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {teams.length > 0 ? teams.map((team, i) => (
+                <motion.div
+                  key={team.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="card p-6 border-[var(--border-subtle)] hover:border-[var(--accent-purple)]/30 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-[var(--accent-purple)]/10 flex items-center justify-center text-[var(--accent-purple)] group-hover:scale-110 transition-transform">
+                      <Users size={24} />
+                    </div>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">
+                      {tasks.filter(t => t.team_id === team.id).length} Tâches
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">{team.name}</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Propriétaire: {team.created_by === user.id ? 'Vous' : 'Autre'}</p>
+                </motion.div>
+              )) : (
+                <div className="col-span-full py-20 text-center card bg-white/5 border-dashed">
+                  <p className="text-[var(--text-muted)]">Vous n'avez pas encore d'équipe.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case "notifications":
+        return (
+          <div className="max-w-2xl mx-auto py-10">
+            <NotificationPanel onClose={() => setActiveTab('home')} />
+          </div>
+        );
+      case "stats":
+        return (
+          <div className="space-y-8">
+            <h2 className="text-2xl font-bold mb-6">Analyses de Performance</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="card p-8 bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 mb-6">Répartition par Priorité</h3>
+                <div className="space-y-4">
+                  {['high', 'medium', 'low'].map(p => {
+                    const count = tasks.filter(t => t.priority === p).length;
+                    const percent = tasks.length > 0 ? (count / tasks.length) * 100 : 0;
+                    return (
+                      <div key={p} className="space-y-1">
+                        <div className="flex justify-between text-xs font-medium">
+                          <span className="capitalize">{p === 'high' ? 'Haute' : p === 'medium' ? 'Moyenne' : 'Basse'}</span>
+                          <span>{count} tâches ({Math.round(percent)}%)</span>
+                        </div>
+                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${p === 'high' ? 'bg-rose-500' : p === 'medium' ? 'bg-[var(--accent-tan)]' : 'bg-emerald-500'}`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="card p-8 bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex flex-col items-center justify-center">
+                <div className="relative w-32 h-32 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90">
+                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
+                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent"
+                      strokeDasharray={364.4}
+                      strokeDashoffset={364.4 - (364.4 * efficiency) / 100}
+                      className="text-[var(--accent-cyan)] transition-all duration-1000"
+                    />
+                  </svg>
+                  <span className="absolute text-2xl font-bold">{efficiency}%</span>
+                </div>
+                <p className="mt-4 text-sm font-medium text-white/60">Efficacité Globale</p>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return (
           <div className="flex flex-col items-center justify-center py-20 bg-[var(--bg-card)]/30 rounded-[var(--radius-xl)] border border-dashed border-[var(--border-subtle)]">
@@ -217,6 +324,7 @@ export default function DashboardPage() {
       <AnimatePresence>
         {isAIActive && <LiveVoiceAssistant onClose={() => setIsAIActive(false)} onTaskCreated={fetchTasks} />}
         {showTaskForm && <TaskForm onClose={() => setShowTaskForm(false)} onSuccess={fetchTasks} />}
+        {showTeamForm && <TeamForm onClose={() => setShowTeamForm(false)} onSuccess={fetchTeams} />}
       </AnimatePresence>
     </div>
   );

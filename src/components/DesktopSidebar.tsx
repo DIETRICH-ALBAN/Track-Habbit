@@ -10,7 +10,9 @@ import {
     ChevronLeft,
     ChevronRight,
     LogOut,
-    Clock
+    Clock,
+    MessageSquare,
+    Bell
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -28,6 +30,9 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
     const menuItems = [
         { id: "home", label: "Accueil", icon: LayoutGrid },
         { id: "calendar", label: "Calendrier", icon: Clock },
+        { id: "chat", label: "Assistant IA", icon: MessageSquare },
+        { id: "teams", label: "Équipes", icon: Users },
+        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "stats", label: "Statistiques", icon: Activity },
     ];
 
