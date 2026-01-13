@@ -73,9 +73,9 @@ export default function DashboardPage() {
   const doneTasks = tasks.filter(t => t.status === 'done');
   const efficiency = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
 
-  // --- MOBILE TAB BAR COMPONENT ---
+  // --- FLOATING TAB BAR COMPONENT (Visible on all devices) ---
   const FloatingTabBar = () => (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md md:hidden">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg">
       <div className="flex items-center justify-between bg-[var(--bg-card)] backdrop-blur-xl border border-[var(--border-default)] rounded-[24px] px-5 py-3 shadow-lg">
         <button onClick={() => setActiveTab('home')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'home' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
           <LayoutGrid size={22} />
