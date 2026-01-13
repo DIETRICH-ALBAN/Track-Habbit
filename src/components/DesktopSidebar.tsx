@@ -9,7 +9,8 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    LogOut
+    LogOut,
+    Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -25,11 +26,9 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
     const supabase = createClient();
 
     const menuItems = [
-        { id: "home", label: "Home", icon: Home },
-        { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
-        { id: "customers", label: "Customers", icon: Users },
-        { id: "business", label: "Business", icon: Activity },
-        { id: "settings", label: "Settings", icon: Settings },
+        { id: "home", label: "Accueil", icon: LayoutGrid },
+        { id: "calendar", label: "Calendrier", icon: Clock },
+        { id: "stats", label: "Statistiques", icon: Activity },
     ];
 
     const handleLogout = async () => {
