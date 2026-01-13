@@ -67,116 +67,142 @@ export default function DashboardPage() {
     fetchTasks();
   }
 
+  // Calculate stats
   const todoTasks = tasks.filter(t => t.status !== 'done');
   const todayTasks = tasks.filter(t => t.due_date && new Date(t.due_date).getDate() === new Date().getDate());
+  const doneTasks = tasks.filter(t => t.status === 'done');
+  const efficiency = tasks.length > 0 ? Math.round((doneTasks.length / tasks.length) * 100) : 0;
 
   // --- MOBILE TAB BAR COMPONENT ---
   const FloatingTabBar = () => (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
-      <div className="flex items-center justify-between bg-[var(--glass-heavy)] backdrop-blur-2xl border border-[var(--border-glass)] rounded-[32px] px-6 py-4 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]">
-        <button onClick={() => setActiveTab('home')} className={`p-2 transition-all ${activeTab === 'home' ? 'text-[var(--accent-cyan)]' : 'text-white/40'}`}>
-          <LayoutGrid size={24} strokeWidth={activeTab === 'home' ? 2.5 : 2} />
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md md:hidden">
+      <div className="flex items-center justify-between bg-[var(--bg-card)] backdrop-blur-xl border border-[var(--border-default)] rounded-[24px] px-5 py-3 shadow-lg">
+        <button onClick={() => setActiveTab('home')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'home' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
+          <LayoutGrid size={22} />
         </button>
 
-        <button onClick={() => setActiveTab('calendar')} className={`p-2 transition-all ${activeTab === 'calendar' ? 'text-[var(--accent-cyan)]' : 'text-white/40'}`}>
-          <Clock size={24} strokeWidth={activeTab === 'calendar' ? 2.5 : 2} />
+        <button onClick={() => setActiveTab('calendar')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'calendar' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
+          <Clock size={22} />
         </button>
 
         {/* CENTRAL AI FAB */}
         <button
           onClick={() => setIsAIActive(true)}
-          className="w-16 h-16 -mt-8 bg-[var(--accent-purple)] rounded-full flex items-center justify-center text-white shadow-[0_0_30px_rgba(112,0,255,0.5)] border-[4px] border-[var(--bg-primary)] active:scale-95 transition-all"
+          className="w-14 h-14 -mt-6 bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-cyan)] rounded-full flex items-center justify-center text-white shadow-lg shadow-[var(--accent-cyan)]/30 border-[3px] border-[var(--bg-primary)] active:scale-95 transition-transform"
         >
-          <Sparkles size={28} />
+          <Sparkles size={24} />
         </button>
 
-        <button onClick={() => setActiveTab('stats')} className={`p-2 transition-all ${activeTab === 'stats' ? 'text-[var(--accent-cyan)]' : 'text-white/40'}`}>
-          <Activity size={24} strokeWidth={activeTab === 'stats' ? 2.5 : 2} />
+        <button onClick={() => setActiveTab('stats')} className={`p-2.5 rounded-xl transition-all ${activeTab === 'stats' ? 'text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10' : 'text-white/40'}`}>
+          <Activity size={22} />
         </button>
 
-        <button onClick={() => setShowTaskForm(true)} className={`p-2 transition-all ${activeTab === 'profile' ? 'text-[var(--accent-cyan)]' : 'text-white/40'}`}>
-          <Plus size={24} strokeWidth={2} />
+        <button onClick={() => setShowTaskForm(true)} className="p-2.5 rounded-xl text-white/40 hover:text-[var(--accent-tan)] transition-colors">
+          <Plus size={22} />
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-white font-sans selection:bg-[var(--accent-cyan)]/30">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-white font-sans">
 
-      {/* Background Ambient Glows */}
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-900/20 blur-[120px] rounded-full mix-blend-screen" />
-        <div className="absolute bottom-[-10%] right-[-20%] w-[500px] h-[500px] bg-[var(--accent-purple)]/10 blur-[100px] rounded-full mix-blend-screen" />
-      </div>
+      <div className="relative z-10 flex flex-col min-h-screen pb-28 md:pb-0">
 
-      <div className="relative z-10 flex flex-col min-h-screen pb-32 md:pb-0">
-
-        {/* HEADER (Glass Sticky) */}
-        <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/80 backdrop-blur-xl border-b border-white/[0.03] px-6 py-5 flex items-center justify-between">
+        {/* HEADER */}
+        <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-b border-[var(--border-subtle)] px-5 md:px-8 py-4 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold tracking-[0.2em] text-[var(--accent-cyan)] uppercase mb-1">
+            <p className="text-[11px] font-bold tracking-[0.15em] text-[var(--accent-tan)] uppercase">
               {format(currentTime, "EEEE d MMMM", { locale: fr })}
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Bonjour, <span className="text-white/60">{user.email?.split('@')[0]}</span>
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight mt-0.5">
+              Dashboard
             </h1>
           </div>
-          <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-            <User size={20} className="text-white/80" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsAIActive(true)}
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-cyan)] text-white text-sm font-medium shadow-md hover:shadow-lg transition-shadow"
+            >
+              <Sparkles size={16} />
+              Assistant IA
+            </button>
+            <div className="w-9 h-9 rounded-full bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center">
+              <User size={18} className="text-white/70" />
+            </div>
           </div>
         </header>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 px-4 pt-8 space-y-12 max-w-4xl mx-auto w-full">
+        <main className="flex-1 px-4 md:px-8 py-6 space-y-8 max-w-6xl mx-auto w-full">
 
-          {/* STATS ROW (Horizontal Scroll on Mobile) */}
-          <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide snap-x">
-            <div className="min-w-[280px] snap-center">
-              <StatCard label="Tâches" value={todoTasks.length} icon={ListChecks} trend="neutral" />
+          {/* STATS ROW - Dashboard Style (4 cards) */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
+              <button onClick={() => setShowTaskForm(true)} className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
+                <Plus size={14} />
+                Nouvelle tâche
+              </button>
             </div>
-            <div className="min-w-[280px] snap-center">
-              <StatCard label="Aujourd'hui" value={todayTasks.length} icon={Clock} trend="up" trendValue="+20%" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard label="Total Tâches" value={tasks.length} icon={ListChecks} delay={0} />
+              <StatCard label="En Cours" value={todoTasks.length} icon={Activity} trend="neutral" delay={0.05} />
+              <StatCard label="Aujourd'hui" value={todayTasks.length} icon={Clock} trend="up" trendValue={`+${todayTasks.length}`} delay={0.1} />
+              <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} trend={efficiency > 50 ? "up" : "down"} trendValue={efficiency > 50 ? "Bon" : "À améliorer"} delay={0.15} />
             </div>
-          </div>
+          </section>
 
-          {/* SECTIONS */}
-          <div className="space-y-6">
-            <div className="flex items-end justify-between px-2">
-              <h2 className="text-xl font-medium tracking-tight">Vos Tâches</h2>
-              <span className="text-xs font-bold uppercase tracking-widest text-white/40">Vue Détaillée</span>
+          {/* TASKS SECTION */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
+              <span className="text-xs text-[var(--text-tertiary)]">{todoTasks.length} restantes</span>
             </div>
 
-            {/* TASK LIST (New Look) */}
-            <div className="space-y-4">
-              {todoTasks.length > 0 ? todoTasks.slice(0, 5).map((task, i) => (
+            <div className="space-y-3">
+              {todoTasks.length > 0 ? todoTasks.slice(0, 7).map((task, i) => (
                 <motion.div
                   key={task.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: i * 0.04 }}
                   onClick={() => toggleTaskStatus(task)}
-                  className="group flex items-center gap-4 p-5 rounded-[24px] bg-white/[0.02] border border-white/[0.05] active:scale-98 transition-all hover:bg-white/[0.05]"
+                  className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] bg-[var(--bg-card)] border border-[var(--border-subtle)] cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 hover:bg-[var(--bg-card-hover)]"
                 >
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-white/20'}`}>
-                    {task.status === 'done' && <CheckCircle2 size={12} className="text-[#0B101B]" />}
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-[var(--accent-steel)]'}`}>
+                    {task.status === 'done' && <CheckCircle2 size={10} className="text-[var(--bg-primary)]" />}
                   </div>
-                  <div className="flex-1">
-                    <h3 className={`font-medium text-lg leading-tight ${task.status === 'done' ? 'line-through text-white/30' : 'text-white'}`}>{task.title}</h3>
-                    {task.due_date && <p className="text-xs text-[var(--accent-cyan)] mt-1">{format(new Date(task.due_date), "dd MMM HH:mm", { locale: fr })}</p>}
+                  <div className="flex-1 min-w-0">
+                    <h3 className={`font-medium text-base leading-snug truncate ${task.status === 'done' ? 'line-through text-white/30' : 'text-white'}`}>{task.title}</h3>
+                    {task.due_date && (
+                      <p className="text-[11px] text-[var(--accent-blue)] mt-0.5">
+                        {format(new Date(task.due_date), "dd MMM • HH:mm", { locale: fr })}
+                      </p>
+                    )}
+                  </div>
+                  <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${task.priority === 'high' ? 'bg-rose-500/15 text-rose-400' :
+                    task.priority === 'medium' ? 'bg-[var(--accent-tan)]/15 text-[var(--accent-tan)]' :
+                      'bg-white/5 text-white/30'
+                    }`}>
+                    {task.priority || 'normal'}
                   </div>
                 </motion.div>
               )) : (
-                <div className="py-12 text-center text-white/30 italic">
-                  Aucune tâche en cours. Le calme absolu.
+                <div className="py-16 text-center rounded-[var(--radius-lg)] bg-[var(--bg-card)]/50 border border-dashed border-[var(--border-subtle)]">
+                  <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
+                  <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche en cours.</p>
+                  <button onClick={() => setShowTaskForm(true)} className="mt-4 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
+                    Créer votre première tâche
+                  </button>
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
         </main>
 
-        {/* Floating AI & Navigation (Mobile First) */}
+        {/* Floating Navigation (Mobile) */}
         <FloatingTabBar />
 
       </div>

@@ -9,43 +9,46 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* === CORN REVOLUTION / IOS PREMIUM PALETTE === */
+  /* === REFINED PALETTE (Coffee Shop / Dashboard Hybrid) === */
 
-  /* Backgrounds */
-  --bg-primary: #0B101B;
-  /* Deep Midnight Blue */
-  --bg-secondary: #161B2D;
-  /* Petrol Blue */
+  /* Backgrounds - Deep Navy */
+  --bg-primary: #14253B;
+  --bg-secondary: #1A2F4A;
+  --bg-card: #1E3654;
+  --bg-card-hover: #254268;
 
-  /* Glass Surfaces (Backdrop Blur required) */
-  --glass-heavy: rgba(11, 16, 27, 0.75);
-  --glass-medium: rgba(22, 27, 45, 0.6);
+  /* Glass Surfaces */
+  --glass-heavy: rgba(20, 37, 59, 0.9);
+  --glass-medium: rgba(46, 97, 131, 0.4);
   --glass-light: rgba(255, 255, 255, 0.05);
 
   /* Accents */
-  --accent-cyan: #00F0FF;
-  /* Electric Cyan */
-  --accent-blue: #2D6BF0;
-  --accent-purple: #7000FF;
+  --accent-cyan: #3DA7D0;
+  --accent-blue: #378CB8;
+  --accent-steel: #2E6183;
+  --accent-tan: #BCA38F;
+  --accent-purple: #7B68EE;
 
   /* Text */
   --text-primary: #FFFFFF;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-tertiary: rgba(255, 255, 255, 0.4);
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-tertiary: rgba(255, 255, 255, 0.45);
 
   /* Borders */
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --border-glass-strong: rgba(255, 255, 255, 0.15);
+  --border-default: rgba(61, 167, 208, 0.25);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-accent: rgba(61, 167, 208, 0.5);
 
-  /* Radii (IOS Style) */
+  /* Radii */
   --radius-sm: 12px;
-  --radius-md: 20px;
-  --radius-lg: 32px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
   --radius-full: 9999px;
 
   /* Gradients */
-  --gradient-main: linear-gradient(135deg, #00F0FF 0%, #2D6BF0 100%);
-  --gradient-glow: radial-gradient(circle at center, rgba(0, 240, 255, 0.15) 0%, transparent 70%);
+  --gradient-cyan: linear-gradient(135deg, #378CB8 0%, #3DA7D0 100%);
+  --gradient-glow: radial-gradient(ellipse at top, rgba(61, 167, 208, 0.15) 0%, transparent 60%);
 }
 
 /* === BASE STYLES === */
@@ -57,12 +60,13 @@
   body {
     background-color: var(--bg-primary);
     background-image:
-      radial-gradient(circle at 10% 20%, rgba(10, 50, 100, 0.4) 0%, transparent 60%),
-      radial-gradient(circle at 90% 80%, rgba(0, 40, 80, 0.3) 0%, transparent 60%);
+      radial-gradient(ellipse at 0% 0%, rgba(46, 97, 131, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 100% 100%, rgba(55, 140, 184, 0.2) 0%, transparent 50%);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
+    min-height: 100vh;
   }
 }
 
