@@ -116,7 +116,8 @@ export default function DashboardPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => toggleTaskStatus(task)}
-                    className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] bg-[#1a1a1a]/60 backdrop-blur-md border border-white/5 cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 hover:bg-[#1a1a1a]/80"
+                    className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] border border-white/5 cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 backdrop-blur-md"
+                    style={{ background: 'var(--bg-glass-gradient)' }}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-[var(--accent-steel)]'}`}>
                       {task.status === 'done' && <CheckCircle2 size={10} className="text-[var(--bg-primary)]" />}
@@ -137,7 +138,10 @@ export default function DashboardPage() {
                     </div>
                   </motion.div>
                 )) : (
-                  <div className="py-16 text-center rounded-[var(--radius-lg)] bg-[#1a1a1a]/40 backdrop-blur-sm border border-dashed border-white/10">
+                  <div
+                    className="py-16 text-center rounded-[var(--radius-lg)] backdrop-blur-sm border border-dashed border-white/10"
+                    style={{ background: 'var(--bg-glass-gradient)' }}
+                  >
                     <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
                     <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche en cours.</p>
                     <button onClick={() => setShowTaskForm(true)} className="mt-4 text-sm font-medium text-[var(--accent-cyan)] hover:underline">

@@ -24,6 +24,9 @@
     --glass-medium: rgba(15, 23, 42, 0.6);
     --glass-light: rgba(15, 23, 42, 0.4);
 
+    /* NEW: Blue Gradient for Cards (Coffee Shop Style) */
+    --bg-glass-gradient: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.6) 100%);
+
     /* Accents */
     --accent-cyan: #06B6D4;
     /* Cyan/Electric Blue */
