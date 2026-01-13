@@ -34,7 +34,7 @@ export function StatCard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay, ease: [0.25, 0.1, 0.25, 1] }}
-            className="group relative overflow-hidden rounded-[20px] border border-[var(--border-default)] bg-[var(--bg-card)] p-6 transition-all duration-300 hover:bg-[var(--bg-card-hover)] hover:border-[var(--accent-cyan)]/50 hover:shadow-[0_10px_30px_-10px_rgba(61,167,208,0.25)]"
+            className="group relative overflow-hidden rounded-[20px] border border-white/5 bg-[#1a1a1a]/40 backdrop-blur-md p-6 transition-all duration-300 hover:bg-[#1a1a1a]/60 hover:border-[var(--accent-cyan)]/50 hover:shadow-[0_10px_30px_-10px_rgba(61,167,208,0.25)]"
         >
             {/* Subtle Glow */}
             <div className="absolute -top-8 -right-8 w-20 h-20 bg-[var(--accent-cyan)]/10 blur-[40px] group-hover:bg-[var(--accent-cyan)]/25 transition-all duration-500" />

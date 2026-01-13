@@ -85,7 +85,7 @@ export default function DashboardPage() {
         return (
           <>
             {/* STATS ROW */}
-            <section>
+            <section className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
                 <button onClick={() => setShowTaskForm(true)} className="hidden md:flex items-center gap-1.5 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
@@ -102,7 +102,7 @@ export default function DashboardPage() {
             </section>
 
             {/* TASKS SECTION */}
-            <section>
+            <section className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
                 <span className="text-xs text-[var(--text-tertiary)]">{todoTasks.length} restantes</span>
@@ -116,7 +116,7 @@ export default function DashboardPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.04 }}
                     onClick={() => toggleTaskStatus(task)}
-                    className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] bg-[var(--bg-card)] border border-[var(--border-subtle)] cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 hover:bg-[var(--bg-card-hover)]"
+                    className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] bg-[#1a1a1a]/60 backdrop-blur-md border border-white/5 cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 hover:bg-[#1a1a1a]/80"
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-[var(--accent-steel)]'}`}>
                       {task.status === 'done' && <CheckCircle2 size={10} className="text-[var(--bg-primary)]" />}
@@ -137,7 +137,7 @@ export default function DashboardPage() {
                     </div>
                   </motion.div>
                 )) : (
-                  <div className="py-16 text-center rounded-[var(--radius-lg)] bg-[var(--bg-card)]/50 border border-dashed border-[var(--border-subtle)]">
+                  <div className="py-16 text-center rounded-[var(--radius-lg)] bg-[#1a1a1a]/40 backdrop-blur-sm border border-dashed border-white/10">
                     <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
                     <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche en cours.</p>
                     <button onClick={() => setShowTaskForm(true)} className="mt-4 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
@@ -265,12 +265,18 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
+    <div className="flex min-h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden relative">
+
+      {/* Background Spline Scene */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-60">
+        <SplineObject />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0A0A0A_100%)]" />
+      </div>
 
       {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto bg-[#141414] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
+      <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
 
         {/* HEADER - Mobile Only */}
         <header className="md:hidden sticky top-0 z-40 bg-[#141414]/90 backdrop-blur-lg border-b border-white/5 px-5 py-4 flex items-center justify-between shrink-0">
