@@ -210,7 +210,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     }, [isMobile]);
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-[#0A0A0A]/90 backdrop-blur-3xl lg:relative lg:inset-auto lg:h-full lg:w-[28rem] lg:backdrop-blur-none transition-all duration-500">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-[#0A0A0A] backdrop-blur-3xl lg:static lg:inset-auto lg:h-screen lg:w-[420px] lg:flex-shrink-0 lg:border-l lg:border-white/5 transition-all duration-500" style={{ background: 'var(--bg-glass-gradient)' }}>
 
             {/* Header */}
             <div className="flex items-center justify-between p-8">

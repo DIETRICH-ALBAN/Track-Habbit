@@ -305,7 +305,7 @@ export default function DashboardPage() {
       {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
 
         {/* HEADER - Mobile Only */}
         <header
@@ -358,9 +358,26 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* OVERLAYS */}
+      {/* AI Assistant Panel - Desktop: inline, Mobile: overlay */}
       <AnimatePresence>
-        {isAIActive && <LiveVoiceAssistant onClose={() => setIsAIActive(false)} onTaskCreated={fetchTasks} />}
+        {isAIActive && (
+          <div className="hidden lg:block relative z-20 h-screen shrink-0">
+            <LiveVoiceAssistant onClose={() => setIsAIActive(false)} onTaskCreated={fetchTasks} />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Assistant - Mobile Overlay */}
+      <AnimatePresence>
+        {isAIActive && (
+          <div className="lg:hidden">
+            <LiveVoiceAssistant onClose={() => setIsAIActive(false)} onTaskCreated={fetchTasks} />
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Other Overlays */}
+      <AnimatePresence>
         {showTaskForm && <TaskForm onClose={() => setShowTaskForm(false)} onSuccess={fetchTasks} />}
         {showTeamForm && <TeamForm onClose={() => setShowTeamForm(false)} onSuccess={fetchTeams} />}
       </AnimatePresence>
