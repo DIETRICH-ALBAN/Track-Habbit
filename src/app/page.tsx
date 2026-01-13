@@ -158,39 +158,48 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg-primary)] text-white font-sans overflow-hidden">
+    <div className="flex min-h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
 
-      {/* PC Menu (Desktop Sidebar - Reference Image Style) */}
+      {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto pb-28 md:pb-0 scroll-smooth">
+      <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto bg-[#141414] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
 
-        {/* HEADER */}
-        <header className="sticky top-0 z-40 bg-[var(--bg-primary)]/90 backdrop-blur-lg border-b border-[var(--border-subtle)] px-5 md:px-8 py-4 flex items-center justify-between shrink-0">
+        {/* HEADER - Mobile Only */}
+        <header className="md:hidden sticky top-0 z-40 bg-[#141414]/90 backdrop-blur-lg border-b border-white/5 px-5 py-4 flex items-center justify-between shrink-0">
           <div>
-            <p className="text-[11px] font-bold tracking-[0.15em] text-[var(--accent-tan)] uppercase">
+            <p className="text-[10px] font-bold tracking-[0.15em] text-[var(--accent-tan)] uppercase">
               {format(currentTime, "EEEE d MMMM", { locale: fr })}
             </p>
-            <h1 className="text-xl md:text-2xl font-semibold tracking-tight mt-0.5">
+            <h1 className="text-xl font-semibold tracking-tight mt-0.5">
               {activeTab === 'home' ? 'Dashboard' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
             </h1>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsAIActive(true)}
-              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-cyan)] text-white text-sm font-medium shadow-md hover:shadow-lg transition-shadow"
+              className="p-2 rounded-xl bg-white/5 border border-white/10 text-white"
             >
-              <Sparkles size={16} />
-              Assistant IA
+              <Sparkles size={20} />
             </button>
-            <div className="w-9 h-9 rounded-full bg-[var(--bg-card)] border border-[var(--border-default)] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
               <User size={18} className="text-white/70" />
             </div>
           </div>
         </header>
 
-        {/* MAIN CONTENT */}
-        <main className="flex-1 px-4 md:px-8 py-6 space-y-8 max-w-6xl mx-auto w-full">
+        {/* MAIN CONTENT AREA */}
+        <main className="flex-1 px-4 md:px-10 py-6 md:py-10 space-y-8 max-w-7xl mx-auto w-full">
+          {/* Dashboard Title - Desktop Only */}
+          <div className="hidden md:block mb-10">
+            <p className="text-xs font-bold tracking-[0.2em] text-white/30 uppercase mb-2">
+              {format(currentTime, "EEEE d MMMM yyyy", { locale: fr })}
+            </p>
+            <h1 className="text-4xl font-bold tracking-tight text-white">
+              {activeTab === 'home' ? 'Overview' : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+            </h1>
+          </div>
+
           {renderContent()}
         </main>
 

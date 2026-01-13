@@ -9,8 +9,7 @@ import {
     Settings,
     ChevronLeft,
     ChevronRight,
-    LogOut,
-    Sparkles
+    LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -41,38 +40,47 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
     return (
         <motion.aside
             initial={false}
-            animate={{ width: isCollapsed ? 80 : 260 }}
-            className="hidden md:flex flex-col h-screen sticky top-0 left-0 bg-[#0A0A0A] border-r border-white/5 z-50 transition-all duration-300 ease-in-out overflow-hidden"
+            animate={{ width: isCollapsed ? 84 : 280 }}
+            className="hidden md:flex flex-col h-screen sticky top-0 left-0 bg-[#0A0A0A] border-r border-white/5 z-50 transition-all duration-300 ease-in-out"
         >
-            {/* Header with Logo */}
-            <div className="flex items-center justify-between h-20 px-6 shrink-0 relative">
+            {/* Header with Logo and Toggle */}
+            <div className="relative flex items-center h-24 px-6 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.3)]">
-                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                    {/* Wrobs Isometric Logo Style */}
+                    <div className="relative w-10 h-10 shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-lg rotate-12 opacity-50" />
+                        <div className="absolute inset-0 bg-[#6366f1] rounded-lg flex items-center justify-center shadow-lg border border-white/20">
+                            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </div>
                     </div>
-                    {!isCollapsed && (
-                        <motion.span
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="text-lg font-bold tracking-tight text-white"
-                        >
-                            Wrobs
-                        </motion.span>
-                    )}
+
+                    <AnimatePresence>
+                        {!isCollapsed && (
+                            <motion.span
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                className="text-2xl font-bold tracking-tight text-white font-sans ml-1"
+                            >
+                                Wrobs
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                 </div>
 
+                {/* Toggle Button - Positioned exactly like the image (partially overlapping) */}
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                    className="absolute -right-4 top-10 w-8 h-8 rounded-lg bg-[#222222] border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all shadow-xl z-50"
                 >
-                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+                    {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                 </button>
             </div>
 
             {/* Navigation Items */}
-            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto scrollbar-hide">
+            <nav className="flex-1 px-4 py-8 space-y-3 overflow-y-auto scrollbar-hide">
                 {menuItems.map((item) => {
                     const isActive = activeTab === item.id;
                     return (
@@ -80,18 +88,19 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={cn(
-                                "w-full flex items-center gap-4 py-3 px-4 rounded-xl transition-all duration-200 group relative",
+                                "w-full flex items-center gap-4 py-3.5 px-4 rounded-xl transition-all duration-200 group relative",
                                 isActive
-                                    ? "bg-white/10 text-white"
-                                    : "text-white/40 hover:text-white hover:bg-white/5"
+                                    ? "bg-[#222222] text-white shadow-sm"
+                                    : "text-white/40 hover:text-white hover:bg-[#1a1a1a]"
                             )}
                         >
-                            <item.icon size={22} className={cn("shrink-0", isActive && "text-[#a855f7]")} />
+                            <item.icon size={22} className={cn("shrink-0 transition-colors", isActive ? "text-white" : "group-hover:text-white")} />
+
                             {!isCollapsed && (
                                 <motion.span
-                                    initial={{ opacity: 0, x: -5 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    className="text-[15px] font-medium whitespace-nowrap"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="text-[16px] font-medium"
                                 >
                                     {item.label}
                                 </motion.span>
@@ -99,7 +108,7 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
 
                             {/* Tooltip for collapsed state */}
                             {isCollapsed && (
-                                <div className="absolute left-16 bg-white text-black px-2 py-1 rounded text-xs font-bold opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                                <div className="absolute left-20 bg-white text-black px-3 py-1.5 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 pointer-events-none transition-all translate-x-[-10px] group-hover:translate-x-0 z-50 shadow-2xl">
                                     {item.label}
                                 </div>
                             )}
@@ -109,16 +118,16 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
             </nav>
 
             {/* Footer / Logout */}
-            <div className="p-4 border-t border-white/5">
+            <div className="p-4 border-t border-white/5 space-y-4">
                 <button
                     onClick={handleLogout}
                     className={cn(
-                        "w-full flex items-center gap-4 py-3 px-4 rounded-xl text-white/40 hover:text-rose-400 hover:bg-rose-500/10 transition-all",
-                        isCollapsed && "justify-center px-0"
+                        "w-full flex items-center gap-4 py-3.5 px-4 rounded-xl text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-all",
+                        isCollapsed && "justify-center"
                     )}
                 >
                     <LogOut size={22} />
-                    {!isCollapsed && <span className="text-[15px] font-medium">Logout</span>}
+                    {!isCollapsed && <span className="text-[16px] font-medium font-sans">Logout</span>}
                 </button>
             </div>
         </motion.aside>
