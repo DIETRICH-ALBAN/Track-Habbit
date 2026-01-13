@@ -34,32 +34,32 @@ export function StatCard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay, ease: [0.25, 0.1, 0.25, 1] }}
-            className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.03] p-6 backdrop-blur-md transition-all hover:bg-white/[0.06] hover:border-white/[0.12] hover:shadow-[0_8px_32px_rgba(157,78,221,0.1)]"
+            className="group relative overflow-hidden rounded-[32px] border border-white/[0.05] bg-white/[0.03] p-8 backdrop-blur-2xl transition-all duration-500 hover:bg-white/[0.06] hover:border-[var(--accent-cyan)]/30 hover:shadow-[0_15px_40px_-10px_rgba(0,240,255,0.15)]"
         >
-            {/* Animated Gradient Background Glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-purple)]/5 via-transparent to-[var(--accent-pink)]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            {/* Animated Glow Spot */}
+            <div className="absolute -top-12 -right-12 w-24 h-24 bg-[var(--accent-cyan)]/20 blur-[60px] group-hover:bg-[var(--accent-cyan)]/40 transition-all duration-700" />
 
             {/* Header */}
-            <div className="relative z-10 flex items-center justify-between mb-6">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/[0.08] to-transparent border border-white/[0.1] flex items-center justify-center text-[var(--accent-purple-light)] group-hover:text-white transition-colors">
-                    <Icon size={20} strokeWidth={1.5} />
+            <div className="relative z-10 flex items-start justify-between mb-8">
+                <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-white/70 group-hover:text-[var(--accent-cyan)] group-hover:scale-110 transition-all duration-300">
+                    <Icon size={22} strokeWidth={1.5} />
                 </div>
                 {trendValue && (
                     <div className={cn(
-                        "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase",
-                        trendConfig[trend].bg,
-                        trendConfig[trend].color
+                        "flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider",
+                        trend === 'up' ? "text-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10" :
+                            trend === 'down' ? "text-rose-400 bg-rose-500/10" : "text-white/40 bg-white/5"
                     )}>
-                        <TrendIcon size={10} />
+                        <TrendIcon size={12} />
                         <span>{trendValue}</span>
                     </div>
                 )}
             </div>
 
             {/* Content */}
-            <div className="relative z-10 space-y-1">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors">{label}</p>
-                <p className="text-3xl font-bold tracking-tight text-white">{value}</p>
+            <div className="relative z-10">
+                <p className="text-4xl font-semibold tracking-tighter text-white mb-2">{value}</p>
+                <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/40 group-hover:text-white/70 transition-colors">{label}</p>
             </div>
         </motion.div>
     );
