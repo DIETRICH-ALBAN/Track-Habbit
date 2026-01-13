@@ -44,8 +44,9 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
     return (
         <motion.aside
             initial={false}
-            animate={{ width: isCollapsed ? 84 : 280 }}
-            className="hidden md:flex flex-col h-screen sticky top-0 left-0 bg-[#0A0A0A] border-r border-white/5 z-50 transition-all duration-300 ease-in-out"
+            animate={{ width: isCollapsed ? 80 : 260 }}
+            className="hidden md:flex flex-col h-screen sticky top-0 left-0 border-r border-white/5 z-50 backdrop-blur-xl transition-all duration-300 ease-in-out"
+            style={{ background: 'var(--bg-glass-gradient)' }}
         >
             {/* Header with Logo and Toggle */}
             <div className="relative flex items-center h-24 px-6 shrink-0">

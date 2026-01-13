@@ -283,7 +283,10 @@ export default function DashboardPage() {
       <div className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
 
         {/* HEADER - Mobile Only */}
-        <header className="md:hidden sticky top-0 z-40 bg-[#141414]/90 backdrop-blur-lg border-b border-white/5 px-5 py-4 flex items-center justify-between shrink-0">
+        <header
+          className="md:hidden sticky top-0 z-40 backdrop-blur-lg border-b border-white/5 px-5 py-4 flex items-center justify-between shrink-0"
+          style={{ background: 'var(--bg-glass-gradient)' }}
+        >
           <div>
             <p className="text-[10px] font-bold tracking-[0.15em] text-[var(--accent-tan)] uppercase">
               {format(currentTime, "EEEE d MMMM", { locale: fr })}
