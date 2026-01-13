@@ -35,6 +35,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const recognitionRef = useRef<any>(null);
     const lastTranscriptRef = useRef<string>("");
+    const currentFullTranscriptRef = useRef<string>(""); // New Ref to track live state
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
@@ -112,6 +113,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             // Clear inputs
             setTranscript("");
             lastTranscriptRef.current = "";
+            currentFullTranscriptRef.current = "";
             setTextInput("");
 
         } catch (error: any) {
@@ -150,6 +152,10 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     .join('');
 
                 const fullText = (lastTranscriptRef.current + " " + currentSessionText).trim();
+
+                // Update Ref for onend to see
+                currentFullTranscriptRef.current = fullText;
+
                 setTranscript(fullText);
                 setTextInput(fullText);
             };
@@ -163,8 +169,10 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             };
 
             recognition.onend = () => {
-                // Save current state when session ends so next start appends to it
-                if (transcript) lastTranscriptRef.current = transcript;
+                // Correctly save the full transcript to history using the Ref (not stale state)
+                if (currentFullTranscriptRef.current) {
+                    lastTranscriptRef.current = currentFullTranscriptRef.current;
+                }
 
                 if (statusRef.current === "listening") {
                     setStatus("idle");
