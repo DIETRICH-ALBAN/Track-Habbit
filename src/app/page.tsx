@@ -1,32 +1,36 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import {
-  Plus, Clock, X, Bell, User, Cpu, Activity,
-  Filter, Sparkles, LayoutGrid, ListChecks, Users, CheckCircle2
+  Plus, Clock, Bell, User, Cpu, Activity,
+  Sparkles, ListChecks, Users, CheckCircle2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase";
 import AuthModal from "@/components/AuthModal";
 import TaskForm from "@/components/TaskForm";
 import TeamForm from "@/components/TeamForm";
-import AIChat from "@/components/AIChat";
-import LiveVoiceAssistant from "@/components/LiveVoiceAssistant";
-import DocumentImport from "@/components/DocumentImport";
-import CalendarView from "@/components/CalendarView";
-import NotificationPanel from "@/components/NotificationPanel";
-import Sidebar from "@/components/Sidebar";
 import { StatCard } from "@/components/ui/StatCard";
 import { TaskCard } from "@/components/ui/TaskCard";
 import { Task } from "@/types/task";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { NeuralSphere } from "@/components/NeuralSphere"; // Kept for imports but unused
-import SplineObject from "@/components/SplineObject";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 import { NavigationDock } from "@/components/NavigationDock";
+
+// Dynamic imports for heavy components
+const SplineObject = dynamic(() => import("@/components/SplineObject"), {
+  ssr: false,
+  loading: () => <div className="absolute inset-0 bg-[#0A0A0A]" />
+});
+const LiveVoiceAssistant = dynamic(() => import("@/components/LiveVoiceAssistant"), { ssr: false });
+const CalendarView = dynamic(() => import("@/components/CalendarView"), { ssr: false });
+const AIChat = dynamic(() => import("@/components/AIChat"), { ssr: false });
+const NotificationPanel = dynamic(() => import("@/components/NotificationPanel"), { ssr: false });
+const DocumentImport = dynamic(() => import("@/components/DocumentImport"), { ssr: false });
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -305,7 +309,10 @@ export default function DashboardPage() {
       {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth pb-32">
+      <div
+        className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth pb-32"
+        style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+      >
 
         {/* HEADER - Mobile Only */}
         <header

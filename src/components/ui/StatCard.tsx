@@ -44,7 +44,9 @@ export function StatCard({
                 className="relative h-full w-full rounded-[27px] p-6 backdrop-blur-xl transition-all duration-500 border border-white/5 overflow-hidden shadow-[0_15px_35px_-10px_rgba(0,0,0,0.5)] group-hover:shadow-[0_25px_50px_-12px_rgba(6,182,212,0.25)]"
                 style={{
                     background: 'rgba(20, 20, 20, 0.7)',
-                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)'
+                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)',
+                    transform: 'translateZ(0)',
+                    willChange: 'backdrop-filter'
                 }}
             >
                 {/* Subtle Inner Glow */}

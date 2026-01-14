@@ -36,7 +36,9 @@ export function TaskCard({ task, onClick, index = 0 }: TaskCardProps) {
                 className="relative p-4 flex items-center gap-4 rounded-[21px] backdrop-blur-lg border border-white/5 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.3)] group-hover:shadow-[0_12px_30px_rgba(6,182,212,0.15)] group-hover:scale-[1.01]"
                 style={{
                     background: 'rgba(25, 25, 25, 0.6)',
-                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)'
+                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)',
+                    transform: 'translateZ(0)',
+                    willChange: 'backdrop-filter'
                 }}
             >
                 {/* Check Button */}
