@@ -296,8 +296,8 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden relative">
 
-      {/* Background Spline Scene */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-60">
+      {/* Background Spline Scene - Hidden on mobile for performance */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-60 hidden md:block">
         <SplineObject />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0A0A0A_100%)]" />
       </div>
@@ -305,7 +305,7 @@ export default function DashboardPage() {
       {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth">
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth pb-24 md:pb-0">
 
         {/* HEADER - Mobile Only */}
         <header

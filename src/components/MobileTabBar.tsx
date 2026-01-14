@@ -13,7 +13,7 @@ interface MobileTabBarProps {
 
 export function MobileTabBar({ activeTab, setActiveTab, setIsAIActive, setShowTaskForm }: MobileTabBarProps) {
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg md:hidden">
+        <div className="fixed bottom-0 left-0 right-0 z-[60] pb-[env(safe-area-inset-bottom)] px-4 py-3 md:hidden">
             <div
                 className="flex items-center justify-between backdrop-blur-xl border border-white/10 rounded-[24px] px-5 py-3 shadow-2xl"
                 style={{ background: 'var(--bg-glass-gradient)' }}
