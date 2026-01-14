@@ -125,16 +125,16 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     };
 
     const stopSpeaking = () => {
-        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+        }
         setStatus("idle");
     };
 
     const startListening = async () => {
         try {
-            // Reset everything for a fresh session
+            // Only reset if starting fresh, but keep current text for UI
             setTranscript("");
-            setTextInput("");
-            lastTranscriptRef.current = "";
             currentFullTranscriptRef.current = "";
 
             setStatus("listening");
@@ -149,31 +149,50 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
             const recognition = new SpeechRecognition();
             recognition.lang = "fr-FR";
-            recognition.continuous = true;
+
+            // Standard non-continuous mode is much more stable on mobile
+            // and naturally stops when the user finishes their sentence.
+            recognition.continuous = false;
             recognition.interimResults = true;
 
             recognition.onresult = (event: any) => {
-                // Map the entire cumulative result set of this session
-                const fullText = Array.from(event.results)
-                    .map((res: any) => res[0].transcript)
-                    .join('');
+                let final = "";
+                let interim = "";
 
-                currentFullTranscriptRef.current = fullText;
-                setTranscript(fullText);
-                setTextInput(fullText);
+                for (let i = 0; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        final += transcript;
+                    } else {
+                        interim += transcript;
+                    }
+                }
+
+                const result = (final || interim).trim();
+                if (result) {
+                    setTranscript(result);
+                    setTextInput(result);
+                    currentFullTranscriptRef.current = result;
+                }
             };
 
             recognition.onerror = (event: any) => {
                 console.error("Rec Error", event.error);
-                if (event.error === 'not-allowed') {
-                    setErrorMessage("Micro bloqué");
+                if (event.error !== 'no-speech') {
+                    setErrorMessage(event.error === 'not-allowed' ? "Micro bloqué" : "Erreur Micro");
                 }
                 setStatus("idle");
             };
 
             recognition.onend = () => {
+                // AUTO-SUBMIT: If we have text and the session ended naturally (silence)
                 if (statusRef.current === "listening") {
-                    setStatus("idle");
+                    const finalMsg = currentFullTranscriptRef.current.trim();
+                    if (finalMsg) {
+                        processMessage(finalMsg);
+                    } else {
+                        setStatus("idle");
+                    }
                 }
             };
 
@@ -188,16 +207,12 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const stopListeningAndSend = () => {
         if (recognitionRef.current) {
+            // Calling stop() will trigger onend, which handles the submission
             recognitionRef.current.stop();
             recognitionRef.current = null;
-        }
-
-        const textToSend = currentFullTranscriptRef.current.trim() || textInput.trim();
-        if (textToSend) {
-            processMessage(textToSend);
         } else {
-            setStatus("idle");
-            setErrorMessage("Je n'ai rien entendu");
+            const text = textInput.trim() || transcript.trim();
+            if (text) processMessage(text);
         }
     };
 
@@ -205,6 +220,11 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     useEffect(() => {
         if (isMobile) return;
     }, [isMobile]);
+
+    // keeping sync with status
+    useEffect(() => {
+        statusRef.current = status;
+    }, [status]);
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-[#0A0A0A] backdrop-blur-3xl lg:static lg:inset-auto lg:h-screen lg:w-[420px] lg:flex-shrink-0 lg:border-l lg:border-white/5 transition-all duration-500" style={{ background: 'var(--bg-glass-gradient)' }}>
@@ -227,9 +247,9 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 <div className="flex flex-col items-center gap-4 mb-6">
                     <div className={`relative flex items-center justify-center transition-all duration-700 ${status === 'listening' ? 'scale-105' : 'scale-100'}`}>
                         <div className={`w-24 h-24 lg:w-28 lg:h-28 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-cyan)] shadow-[0_0_40px_rgba(6,182,212,0.3)] bg-[var(--accent-cyan)]/10' :
-                                status === 'processing' ? 'border-white/20 animate-pulse' :
-                                    status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_40px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
-                                        'border-white/5 bg-white/[0.02]'
+                            status === 'processing' ? 'border-white/20 animate-pulse' :
+                                status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_40px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
+                                    'border-white/5 bg-white/[0.02]'
                             }`}>
                             {status === 'processing' ? <Loader2 size={36} className="text-white animate-spin" /> :
                                 status === 'speaking' || status === 'idle' && window.speechSynthesis.speaking ? <Volume2 size={36} className="text-[var(--accent-tan)] animate-pulse" /> :
