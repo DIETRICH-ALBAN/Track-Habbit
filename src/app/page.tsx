@@ -350,13 +350,15 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Floating Navigation (Global Dock) */}
-      <NavigationDock
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        setIsAIActive={setIsAIActive}
-        setShowTaskForm={setShowTaskForm}
-      />
+      {/* Floating Navigation (Mobile Only) */}
+      <div className="md:hidden">
+        <NavigationDock
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          setIsAIActive={setIsAIActive}
+          setShowTaskForm={setShowTaskForm}
+        />
+      </div>
 
       {/* AI Assistant Panel - Desktop: inline, Mobile: overlay */}
       <AnimatePresence>
