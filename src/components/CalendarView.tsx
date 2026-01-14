@@ -46,36 +46,37 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
         <div className="flex flex-col xl:flex-row gap-6 h-full relative z-10 overflow-hidden">
             {/* Calendar Grid */}
             <div
-                className="relative overflow-hidden p-6 rounded-[32px] border border-white/10 flex-1 min-h-[400px] flex flex-col backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                className="relative overflow-hidden p-5 md:p-6 rounded-[32px] border border-white/10 flex-[1.5] lg:flex-1 min-h-[380px] flex flex-col backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                 style={{
                     background: 'rgba(25, 25, 25, 0.4)',
-                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)'
+                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)',
+                    transform: 'translateZ(0)'
                 }}
             >
                 <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
-                <div className="flex justify-between items-center mb-4 shrink-0">
+                <div className="flex justify-between items-center mb-6 shrink-0 relative z-10">
                     <h2 className="text-xl font-black text-white capitalize tracking-tight">
                         {format(currentMonth, "MMMM", { locale: fr })} <span className="text-[var(--accent-tan)]">{format(currentMonth, "yyyy")}</span>
                     </h2>
                     <div className="flex gap-2">
-                        <button onClick={prevMonth} className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
-                            <ChevronLeft size={18} />
+                        <button onClick={prevMonth} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 active:scale-95 transition-all border border-white/5">
+                            <ChevronLeft size={20} />
                         </button>
-                        <button onClick={nextMonth} className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
-                            <ChevronRight size={18} />
+                        <button onClick={nextMonth} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 active:scale-95 transition-all border border-white/5">
+                            <ChevronRight size={20} />
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-7 mb-3 shrink-0">
+                <div className="grid grid-cols-7 mb-4 shrink-0 relative z-10">
                     {weekDays.map(day => (
-                        <div key={day} className="text-center text-[9px] font-bold text-[var(--accent-tan)] uppercase tracking-[0.15em]">
+                        <div key={day} className="text-center text-[9px] font-bold text-[var(--accent-tan)] uppercase tracking-[0.2em]">
                             {day}
                         </div>
                     ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-1.5 flex-1 min-h-0 overflow-y-auto">
+                <div className="grid grid-cols-7 gap-1 flex-1 min-h-0 overflow-y-auto scrollbar-hide relative z-10">
                     {days.map((day, dayIdx) => {
                         const dayTasks = getDayTasks(day);
                         const hasTasks = dayTasks.length > 0;
@@ -87,19 +88,20 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
                                 key={day.toString()}
                                 onClick={() => setSelectedDate(day)}
                                 className={`
-                                    relative p-1.5 rounded-xl cursor-pointer transition-all min-h-[44px] flex flex-col items-center justify-center gap-0.5 border
-                                    ${!isCurrentMonth ? "text-white/20 opacity-30" : "text-white"}
-                                    ${isSelected ? "bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-transparent hover:bg-white/5 hover:border-white/5"}
-                                    ${isToday(day) && !isSelected ? "border-[var(--accent-tan)]/40 text-[var(--accent-tan)] font-black" : ""}
+                                    relative p-2 rounded-xl cursor-pointer transition-all aspect-square min-h-[48px] flex flex-col items-center justify-center gap-1 border
+                                    ${!isCurrentMonth ? "text-white/10" : "text-white"}
+                                    ${isSelected ? "bg-[var(--accent-cyan)]/25 border-[var(--accent-cyan)] shadow-[0_0_20px_rgba(6,182,212,0.2)]" : "border-transparent"}
+                                    ${isToday(day) && !isSelected ? "border-[var(--accent-tan)]/30 text-[var(--accent-tan)] font-bold bg-[var(--accent-tan)]/5" : ""}
+                                    active:scale-90
                                 `}
                             >
-                                <span className="text-xs font-bold">{format(day, dateFormat)}</span>
+                                <span className="text-sm font-bold">{format(day, dateFormat)}</span>
                                 {hasTasks && (
                                     <div className="flex gap-0.5">
                                         {dayTasks.slice(0, 3).map((t, i) => (
                                             <div
                                                 key={i}
-                                                className={`w-1 h-1 rounded-full ${t.status === 'done' ? 'bg-emerald-500' : 'bg-[var(--accent-cyan)]'}`}
+                                                className={`w-1 h-1 rounded-full ${t.status === 'done' ? 'bg-emerald-400' : 'bg-[var(--accent-cyan)] shadow-[0_0_4px_#06b6d4]'}`}
                                             />
                                         ))}
                                     </div>
@@ -110,25 +112,33 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
                 </div>
             </div>
 
-            {/* Selected Day Tasks */}
+            {/* Selected Day Tasks Panel */}
             <div
-                className="relative overflow-hidden w-full xl:w-[400px] p-8 rounded-[38px] border border-white/10 flex flex-col backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)]"
+                className="relative overflow-hidden w-full xl:w-[420px] p-6 lg:p-8 rounded-[38px] border border-white/10 flex flex-col backdrop-blur-3xl shadow-[0_30px_70px_rgba(0,0,0,0.7)] h-full xl:h-auto min-h-[280px]"
                 style={{
-                    background: 'rgba(30, 30, 30, 0.5)',
-                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 100%)'
+                    background: 'rgba(20, 20, 20, 0.65)',
+                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 100%)',
+                    transform: 'translateZ(0)'
                 }}
             >
-                <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
-                <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5">
-                    <div className="w-10 h-10 rounded-xl bg-[var(--accent-cyan)]/10 flex items-center justify-center text-[var(--accent-cyan)]">
-                        <Clock size={16} />
+                <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
+                <div className="flex items-center gap-4 mb-6 pb-4 border-b border-white/5 relative z-10 shrink-0">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[var(--accent-cyan)]/20 to-transparent flex items-center justify-center text-[var(--accent-cyan)] border border-white/5 ring-1 ring-[var(--accent-cyan)]/20">
+                        <Clock size={20} />
                     </div>
-                    <h3 className="text-lg font-bold text-white capitalize">
-                        {selectedDate ? format(selectedDate, "EEEE d MMMM", { locale: fr }) : "Sélection"}
-                    </h3>
+                    <div>
+                        <h3 className="text-xl font-bold text-white capitalize leading-none mb-1">
+                            {selectedDate ? format(selectedDate, "EEEE d MMMM", { locale: fr }) : "Sélection"}
+                        </h3>
+                        {selectedDayTasks.length > 0 && (
+                            <p className="text-[10px] uppercase font-bold tracking-widest text-white/30">
+                                {selectedDayTasks.length} Tâche{selectedDayTasks.length > 1 ? 's' : ''}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
-                <div className="space-y-4 overflow-y-auto flex-1 pr-2 scrollbar-hide">
+                <div className="space-y-4 overflow-y-auto flex-1 pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20 relative z-10">
                     {selectedDayTasks.length > 0 ? (
                         <AnimatePresence>
                             {selectedDayTasks.map(task => (
