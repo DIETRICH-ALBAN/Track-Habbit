@@ -124,14 +124,26 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         }
     };
 
+    const stopSpeaking = () => {
+        window.speechSynthesis.cancel();
+        setStatus("idle");
+    };
+
     const startListening = async () => {
         try {
+            // Reset everything for a fresh session
+            setTranscript("");
+            setTextInput("");
+            lastTranscriptRef.current = "";
+            currentFullTranscriptRef.current = "";
+
             setStatus("listening");
             setErrorMessage("");
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
                 setErrorMessage("Non supporté");
+                setStatus("idle");
                 return;
             }
 
@@ -140,22 +152,13 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             recognition.continuous = true;
             recognition.interimResults = true;
 
-            recognition.onstart = () => console.log("Recognition Started");
-
-            recognition.onstart = () => console.log("Recognition Started");
-
             recognition.onresult = (event: any) => {
-                // Fix for duplication: Do NOT iterate and append to ref.
-                // Just map the current session's results entirely.
-                const currentSessionText = Array.from(event.results)
+                // Map the entire cumulative result set of this session
+                const fullText = Array.from(event.results)
                     .map((res: any) => res[0].transcript)
                     .join('');
 
-                const fullText = (lastTranscriptRef.current + " " + currentSessionText).trim();
-
-                // Update Ref for onend to see
                 currentFullTranscriptRef.current = fullText;
-
                 setTranscript(fullText);
                 setTextInput(fullText);
             };
@@ -164,16 +167,11 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 console.error("Rec Error", event.error);
                 if (event.error === 'not-allowed') {
                     setErrorMessage("Micro bloqué");
-                    setStatus("idle");
                 }
+                setStatus("idle");
             };
 
             recognition.onend = () => {
-                // Correctly save the full transcript to history using the Ref (not stale state)
-                if (currentFullTranscriptRef.current) {
-                    lastTranscriptRef.current = currentFullTranscriptRef.current;
-                }
-
                 if (statusRef.current === "listening") {
                     setStatus("idle");
                 }
@@ -194,7 +192,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             recognitionRef.current = null;
         }
 
-        const textToSend = transcript.trim() || textInput.trim();
+        const textToSend = currentFullTranscriptRef.current.trim() || textInput.trim();
         if (textToSend) {
             processMessage(textToSend);
         } else {
@@ -206,7 +204,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     // Desktop Visualizer Logic (Only run if !isMobile)
     useEffect(() => {
         if (isMobile) return;
-        // ... (We could keep the old logic for desktop, but for simplicity let's unify the UX for now to ensure stability)
     }, [isMobile]);
 
     return (
@@ -225,18 +222,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 </button>
             </div>
 
-            {/* Main Content - Proper flex layout without absolute positioning */}
+            {/* Main Content */}
             <div className="flex-1 flex flex-col items-center px-6 py-4 overflow-y-auto">
-                {/* Status Indicator */}
                 <div className="flex flex-col items-center gap-4 mb-6">
                     <div className={`relative flex items-center justify-center transition-all duration-700 ${status === 'listening' ? 'scale-105' : 'scale-100'}`}>
                         <div className={`w-24 h-24 lg:w-28 lg:h-28 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-cyan)] shadow-[0_0_40px_rgba(6,182,212,0.3)] bg-[var(--accent-cyan)]/10' :
-                            status === 'processing' ? 'border-white/20 animate-pulse' :
-                                status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_40px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
-                                    'border-white/5 bg-white/[0.02]'
+                                status === 'processing' ? 'border-white/20 animate-pulse' :
+                                    status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_40px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
+                                        'border-white/5 bg-white/[0.02]'
                             }`}>
                             {status === 'processing' ? <Loader2 size={36} className="text-white animate-spin" /> :
-                                status === 'speaking' ? <Volume2 size={36} className="text-[var(--accent-tan)] animate-pulse" /> :
+                                status === 'speaking' || status === 'idle' && window.speechSynthesis.speaking ? <Volume2 size={36} className="text-[var(--accent-tan)] animate-pulse" /> :
                                     status === 'listening' ? <Mic size={36} className="text-[var(--accent-cyan)]" /> :
                                         <Sparkles size={36} className="text-white/10" />}
                         </div>
@@ -252,7 +248,6 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     </p>
                 </div>
 
-                {/* Transcript Area */}
                 <div className="w-full flex-1 min-h-0 flex flex-col">
                     <div
                         className="flex-1 min-h-[100px] rounded-2xl p-6 border border-white/5 flex flex-col items-center justify-center text-center overflow-y-auto"
@@ -281,11 +276,19 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             <div className="p-4 lg:p-6 w-full shrink-0 border-t border-white/5">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => status === 'listening' ? stopListeningAndSend() : startListening()}
-                        className={`w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center transition-all duration-300 shadow-lg ${status === 'listening' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-[var(--accent-cyan)] shadow-[var(--accent-cyan)]/30'
+                        onClick={() => {
+                            if (status === 'speaking') {
+                                stopSpeaking();
+                            } else if (status === 'listening') {
+                                stopListeningAndSend();
+                            } else {
+                                startListening();
+                            }
+                        }}
+                        className={`w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center transition-all duration-300 shadow-lg ${status === 'listening' || status === 'speaking' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-[var(--accent-cyan)] shadow-[var(--accent-cyan)]/30'
                             }`}
                     >
-                        {status === 'listening' ? <Send size={24} /> : <Mic size={24} />}
+                        {status === 'speaking' ? <StopCircle size={24} /> : status === 'listening' ? <Send size={24} /> : <Mic size={24} />}
                     </button>
 
                     <div className="flex-1 rounded-xl p-1.5 border border-white/5 flex items-center gap-2" style={{ background: 'rgba(10,10,10,0.5)' }}>
@@ -297,13 +300,14 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
-                                    stopListeningAndSend();
+                                    const textToSend = textInput.trim();
+                                    if (textToSend) processMessage(textToSend);
                                 }
                             }}
                         />
-                        {textInput.trim() && status !== 'listening' && (
+                        {textInput.trim() && status !== 'listening' && status !== 'speaking' && (
                             <button
-                                onClick={() => stopListeningAndSend()}
+                                onClick={() => processMessage(textInput.trim())}
                                 className="w-9 h-9 bg-[var(--accent-tan)]/10 text-[var(--accent-tan)] rounded-lg hover:bg-[var(--accent-tan)]/20 transition-all flex items-center justify-center"
                             >
                                 <Send size={16} />
