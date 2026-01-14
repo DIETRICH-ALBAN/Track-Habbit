@@ -36,11 +36,13 @@ const DocumentImport = dynamic(() => import("@/components/DocumentImport"), { ss
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
   const [user, setUser] = useState<SupabaseUser | any>({});
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // UI States
   const [activeTab, setActiveTab] = useState("home");
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [isAIActive, setIsAIActive] = useState(false);
 
@@ -58,9 +60,25 @@ export default function DashboardPage() {
     getUser();
     fetchTasks();
     fetchTeams();
+    fetchNotes();
+    fetchUnreadCount();
+
+    // Live unread count
+    const channel = supabase
+      .channel('live-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        fetchUnreadCount();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, () => {
+        fetchNotes();
+      })
+      .subscribe();
 
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function fetchTasks() {
@@ -71,6 +89,19 @@ export default function DashboardPage() {
   async function fetchTeams() {
     const { data } = await supabase.from('teams').select('*');
     if (data) setTeams(data);
+  }
+
+  async function fetchNotes() {
+    const { data } = await supabase.from('notes').select('*').order('created_at', { ascending: false });
+    if (data) setNotes(data);
+  }
+
+  async function fetchUnreadCount() {
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('read', false);
+    setUnreadNotifications(count || 0);
   }
 
   async function toggleTaskStatus(task: Task) {
@@ -219,7 +250,7 @@ export default function DashboardPage() {
       case "chat":
         return (
           <div className="h-[calc(100vh-200px)] flex flex-col">
-            <AIChat onTaskCreated={fetchTasks} />
+            <AIChat onTaskCreated={() => { fetchTasks(); fetchNotes(); }} />
           </div>
         );
       case "teams":
@@ -327,6 +358,53 @@ export default function DashboardPage() {
             </div>
           </div>
         );
+      case "notes":
+        return (
+          <div className="space-y-6 relative z-10 pb-20">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white tracking-tight">Points <span className="text-[var(--accent-tan)]">Importants</span></h2>
+              <div className="flex items-center gap-2 text-xs font-bold text-white/30 uppercase tracking-widest">
+                <Sparkles size={14} className="text-[var(--accent-cyan)]" />
+                <span>Capturé par l'IA</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {notes.length > 0 ? notes.map((note, i) => (
+                <motion.div
+                  key={note.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-6 rounded-[28px] border border-white/5 transition-all hover:border-white/10 group backdrop-blur-3xl relative overflow-hidden"
+                  style={{ background: 'var(--bg-glass-gradient)' }}
+                >
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/[0.03] to-transparent rounded-bl-full pointer-events-none" />
+                  <div className="flex items-start justify-between mb-4 relative z-10">
+                    <div className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center border border-white/5",
+                      note.is_important ? "bg-[var(--accent-tan)]/10 text-[var(--accent-tan)]" : "bg-white/5 text-white/30"
+                    )}>
+                      {note.is_important ? <Sparkles size={18} /> : <Clock size={18} />}
+                    </div>
+                    <span className="text-[9px] uppercase font-black tracking-widest text-white/20">
+                      {format(new Date(note.created_at), "d MMM", { locale: fr })}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold mb-2 text-white group-hover:text-[var(--accent-tan)] transition-colors">{note.title || "Insight"}</h3>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed italic line-clamp-4">"{note.content}"</p>
+                </motion.div>
+              )) : (
+                <div
+                  className="col-span-full py-32 text-center rounded-[32px] border border-dashed border-white/5 backdrop-blur-sm"
+                  style={{ background: 'var(--bg-glass-gradient)' }}
+                >
+                  <Sparkles size={48} className="text-white/5 mx-auto mb-6" />
+                  <p className="text-[var(--text-secondary)] text-sm font-medium">Discutez avec l'assistant pour capturer vos pensées.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
       default:
         return (
           <div className="flex flex-col items-center justify-center py-20 bg-[var(--bg-card)]/30 rounded-[var(--radius-xl)] border border-dashed border-[var(--border-subtle)]">
@@ -348,7 +426,11 @@ export default function DashboardPage() {
       </div>
 
       {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
-      <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <DesktopSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        unreadCount={unreadNotifications}
+      />
 
       <div
         className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth pb-32"
@@ -405,6 +487,7 @@ export default function DashboardPage() {
           setActiveTab={setActiveTab}
           setIsAIActive={setIsAIActive}
           setShowTaskForm={setShowTaskForm}
+          unreadCount={unreadNotifications}
         />
       </div>
 
@@ -412,7 +495,10 @@ export default function DashboardPage() {
       <AnimatePresence>
         {isAIActive && (
           <div className="hidden lg:block relative z-20 h-screen shrink-0">
-            <LiveVoiceAssistant onClose={() => setIsAIActive(false)} onTaskCreated={fetchTasks} />
+            <LiveVoiceAssistant
+              onClose={() => setIsAIActive(false)}
+              onTaskCreated={() => { fetchTasks(); fetchNotes(); }}
+            />
           </div>
         )}
       </AnimatePresence>
@@ -421,7 +507,10 @@ export default function DashboardPage() {
       <AnimatePresence>
         {isAIActive && (
           <div className="lg:hidden">
-            <LiveVoiceAssistant onClose={() => setIsAIActive(false)} onTaskCreated={fetchTasks} />
+            <LiveVoiceAssistant
+              onClose={() => setIsAIActive(false)}
+              onTaskCreated={() => { fetchTasks(); fetchNotes(); }}
+            />
           </div>
         )}
       </AnimatePresence>

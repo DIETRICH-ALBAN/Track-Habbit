@@ -27,42 +27,38 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
     useEffect(() => {
         const fetchNotifications = async () => {
-            setNotifications([
-                {
-                    id: '1',
-                    title: 'Nouvelle tâche d\'équipe',
-                    description: 'Un nouveau projet a été ajouté à l\'équipe Marketing.',
-                    type: 'task_created',
-                    created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-                    read: false
-                },
-                {
-                    id: '2',
-                    title: 'Tâche terminée',
-                    description: 'La tâche "Rapport Hebdomadaire" a été marquée comme terminée.',
-                    type: 'task_completed',
-                    created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-                    read: true
-                }
-            ]);
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (!error && data) {
+                setNotifications(data as Notification[]);
+            }
             setLoading(false);
         };
 
         fetchNotifications();
 
+        // Real-time subscription for notifications
         const channel = supabase
-            .channel('task-updates')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
-                const newTask = payload.new;
-                const notification: Notification = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    title: 'Tâche ajoutée',
-                    description: `Une nouvelle tâche "${newTask.title}" a été créée.`,
-                    type: 'task_created',
-                    created_at: new Date().toISOString(),
-                    read: false
-                };
-                setNotifications(prev => [notification, ...prev]);
+            .channel('notifications-live')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'notifications',
+                filter: `user_id=eq.${(supabase.auth.getUser() as any).data?.user?.id}`
+            }, (payload) => {
+                setNotifications(prev => [payload.new as Notification, ...prev]);
+            })
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'notifications'
+            }, (payload) => {
+                setNotifications(prev => prev.map(n => n.id === payload.new.id ? payload.new as Notification : n));
             })
             .subscribe();
 
@@ -71,8 +67,26 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
         };
     }, [supabase]);
 
-    const markAsRead = (id: string) => {
+    const markAsRead = async (id: string) => {
+        // Update UI immediately
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+
+        // Update DB
+        await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', id);
+    };
+
+    const markAllAsRead = async () => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            await supabase
+                .from('notifications')
+                .update({ read: true })
+                .eq('user_id', user.id);
+        }
     };
 
     const getTypeStyles = (type: string) => {

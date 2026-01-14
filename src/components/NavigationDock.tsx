@@ -11,9 +11,10 @@ interface NavigationDockProps {
     setActiveTab: (tab: string) => void;
     setIsAIActive: (active: boolean) => void;
     setShowTaskForm: (show: boolean) => void;
+    unreadCount?: number;
 }
 
-export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShowTaskForm }: NavigationDockProps) {
+export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShowTaskForm, unreadCount = 0 }: NavigationDockProps) {
     const [isMenuExpanded, setIsMenuExpanded] = useState(false);
 
     const primaryItems = [
@@ -23,6 +24,7 @@ export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShow
     ];
 
     const secondaryItems = [
+        { id: 'notes', label: 'Notes', icon: Sparkles, onClick: () => setActiveTab('notes') },
         { id: 'teams', label: 'Équipes', icon: Users, onClick: () => setActiveTab('teams') },
         { id: 'notifications', label: 'Notifications', icon: Bell, onClick: () => setActiveTab('notifications') },
         { id: 'stats', label: 'Stats', icon: Activity, onClick: () => setActiveTab('stats') },
@@ -70,6 +72,11 @@ export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShow
                                     <item.icon size={18} />
                                 </div>
                                 <span className="text-sm font-semibold tracking-tight">{item.label}</span>
+                                {item.id === 'notifications' && unreadCount > 0 && (
+                                    <div className="ml-auto bg-[var(--accent-cyan)] text-[var(--bg-primary)] text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                        {unreadCount}
+                                    </div>
+                                )}
                             </button>
                         ))}
                     </motion.div>

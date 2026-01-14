@@ -12,7 +12,8 @@ import {
     LogOut,
     Clock,
     MessageSquare,
-    Bell
+    Bell,
+    Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -21,15 +22,17 @@ import { createClient } from "@/lib/supabase";
 interface DesktopSidebarProps {
     activeTab: string;
     setActiveTab: (tab: string) => void;
+    unreadCount?: number;
 }
 
-export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps) {
+export function DesktopSidebar({ activeTab, setActiveTab, unreadCount = 0 }: DesktopSidebarProps) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const supabase = createClient();
 
     const menuItems = [
         { id: "home", label: "Accueil", icon: LayoutGrid },
         { id: "calendar", label: "Calendrier", icon: Clock },
+        { id: "notes", label: "Points Forts", icon: Sparkles },
         { id: "chat", label: "Assistant IA", icon: MessageSquare },
         { id: "teams", label: "Équipes", icon: Users },
         { id: "notifications", label: "Notifications", icon: Bell },
@@ -125,6 +128,19 @@ export function DesktopSidebar({ activeTab, setActiveTab }: DesktopSidebarProps)
                                 >
                                     {item.label}
                                 </motion.span>
+                            )}
+
+                            {item.id === 'notifications' && unreadCount > 0 && (
+                                <motion.div
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    className={cn(
+                                        "bg-[var(--accent-cyan)] text-[var(--bg-primary)] text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center shadow-[0_0_10px_rgba(6,182,212,0.5)]",
+                                        isCollapsed ? "absolute top-2 right-2" : "ml-auto"
+                                    )}
+                                >
+                                    {unreadCount}
+                                </motion.div>
                             )}
 
                             {isActive && (

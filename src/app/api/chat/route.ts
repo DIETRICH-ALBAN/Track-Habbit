@@ -1,337 +1,190 @@
 import { createClient } from '@/lib/supabase-server';
 import { NextRequest, NextResponse } from 'next/server';
 import { OpenRouter } from "@openrouter/sdk";
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const openrouter = new OpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY || ''
 });
 
-const SYSTEM_PROMPT = `Tu es Track Habbit AI, l'assistant personnel ULTIME et OMNIPOTENT. Ton interface est principalement vocale, donc ta façon de parler doit être NATURELLE, FLUIDE et HUMAINE.
+const SYSTEM_PROMPT = `Tu es Track Habbit AI, l'assistant personnel ULTIME, OMNIPOTENT et surtout ton COMPAGNON de vie et de productivité.
+Ton interface est principalement vocale, donc ta façon de parler doit être NATURELLE, FLUIDE, EMPATHIQUE et HUMAINE.
 
-### TA PERSONNALITÉ :
-- **Humain et Proactif** : Ne sois pas un simple automate. Si l'utilisateur semble débordé, propose de réorganiser. Si on te pose une question, réponds avec intelligence et clarté.
-- **Expert en Organisation** : Tu n'es pas juste un chatbot, tu es un coach qui aide à comprendre et à agir. Explique les concepts si nécessaire.
-- **Zéro Robotique** : N'annonce JAMAIS d'identifiants techniques (IDs, UUIDs) dans tes phrases. Ne dis jamais "La tâche avec l'ID 123...". Utilise les titres.
-- **Pas de Meta-langage** : Ne décris pas tes gestes ou emojis (ex: ne dis pas "Sourire", "Clin d'oeil"). Parle normalement.
+### TON NOUVEAU RÔLE : COMPAGNON & PARTENAIRE
+- **Écoute Active** : Ne te contente pas d'exécuter. Échange avec l'utilisateur. S'il partage une idée, développe-la avec lui. S'il te raconte sa journée, montre de l'intérêt.
+- **Proactif & Intelligent** : Si l'utilisateur mentionne une intention ("Je pense aller à Aqua mardi"), interprète-la comme une opportunité de l'aider à s'organiser et propose de créer la tâche.
+- **Capitaine de l'Ordre** : Tu identifies les points importants d'une conversation. Si quelque chose semble mériter d'être retenu, crée une NOTE.
+- **Zéro Robotique** : Parle comme un ami brillant. N'annonce jamais d'identifiants techniques (IDs).
 
-### TACHES & RESPONSABILITÉS :
-1. **Gestion Totale** : Crée, modifie, supprime des tâches ou des équipes. Planifie l'agenda.
-2. **Contexte Dynamique** : Tu connais les membres des équipes et l'état des tâches.
-3. **Format Vocal** : Tes phrases doivent être courtes et percutantes.
-
-### TES ACTIONS (JSON STRICT) :
-Utilise ces blocs JSON à la fin de tes réponses :
-- Créer : {"action": "create_task", "title": "NOM", "priority": "...", "due_date": "YYYY-MM-DD HH:mm:ss"}
-- Modifier : {"action": "update_task", "id": "...", "updates": {...}}
-- Supprimer : {"action": "delete_task", "id": "..."}
-- Supprimer tout : {"action": "delete_all_tasks"}
+### TES ACTIONS SPÉCIALES (JSON STRICT) :
+Utilise ces blocs JSON à la fin de tes réponses pour agir sur le système :
+- Créer une tâche : {"action": "create_task", "title": "NOM", "priority": "high/medium/low", "due_date": "YYYY-MM-DD HH:mm:ss"}
+- Créer une NOTE : {"action": "create_note", "content": "Contenu de la note", "title": "Titre optionnel", "is_important": true/false}
+- Envoyer une NOTIFICATION : {"action": "push_notification", "title": "Titre", "description": "Message", "type": "task_created/info/alert"}
+- Modifier une tâche : {"action": "update_task", "id": "...", "updates": {...}}
+- Supprimer une tâche : {"action": "delete_task", "id": "..."}
+- Créer une équipe : {"action": "create_team", "name": "NOM"}
 
 ### RÈGLES D'OR :
-1. **DATES** : Utilise "YYYY-MM-DD HH:mm:ss". Aujourd'hui est le {{today}}.
-2. **STYLE** : Sois élégant, efficace et rassurant. Ne lis jamais de code ou de JSON à l'oral.`;
+1. **DATES** : Utilise "YYYY-MM-DD HH:mm:ss". Aujourd'hui est le {{today}} ({{dayName}}).
+2. **STYLE** : Sois élégant, chaleureux et efficace. Pas de meta-langage (ex: ne décris pas tes emojis).`;
 
 export async function POST(request: NextRequest) {
     try {
-        const today = new Date().toISOString().split('T')[0];
-        const fullPrompt = SYSTEM_PROMPT.replace('{{today}}', today);
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const dayName = format(now, "EEEE", { locale: fr });
+        const fullPrompt = SYSTEM_PROMPT
+            .replace('{{today}}', today)
+            .replace('{{dayName}}', dayName);
 
         if (!process.env.OPENROUTER_API_KEY) {
-            return NextResponse.json({ error: "Clé API manquante dans Vercel" }, { status: 500 });
+            return NextResponse.json({ error: "Clé API manquante" }, { status: 500 });
         }
 
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
-            return NextResponse.json({ error: "Session non trouvée. Veuillez recharger." }, { status: 401 });
-        }
-
-        if (!user) {
-            return NextResponse.json({ error: 'Utilisateur non identifié.' }, { status: 401 });
+            return NextResponse.json({ error: "Session non trouvée." }, { status: 401 });
         }
 
         const { message, audio } = await request.json();
 
-        if ((!message || typeof message !== 'string') && !audio) {
-            return NextResponse.json({ error: 'Message ou audio requis' }, { status: 400 });
+        if (!message && !audio) {
+            return NextResponse.json({ error: "Message ou audio requis" }, { status: 400 });
         }
 
-        // Récupérer les tâches de l'utilisateur
-        const { data: tasks } = await supabase
-            .from('tasks')
-            .select('id, title, status, priority, due_date')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(20);
+        // Récupérer contexte complet
+        const { data: tasks } = await supabase.from('tasks').select('id, title, status, priority, due_date').eq('user_id', user.id).limit(20);
+        const { data: notes } = await supabase.from('notes').select('title, content').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5);
+        const { data: memberships } = await supabase.from('memberships').select('team_id, team:teams(id, name), role').eq('user_id', user.id);
 
-        // Récupérer les équipes de l'utilisateur et leurs membres
-        const { data: memberships } = await supabase
-            .from('memberships')
-            .select('team_id, team:teams(id, name), role')
-            .eq('user_id', user.id);
+        let context = `\n\n[CONTEXTE ACTUEL]`;
+        context += `\nTâches: ${tasks?.map(t => `[ID: ${t.id}] "${t.title}" (${t.status}, ${t.priority}, ${t.due_date})`).join(' | ') || 'Aucune'}`;
+        context += `\nNotes récentes: ${notes?.map(n => `[${n.title || 'Note'}] ${n.content}`).join(' | ') || 'Aucune'}`;
 
-        let teamsContext = "";
         if (memberships && memberships.length > 0) {
-            teamsContext = "\n\nÉquipes disponibles :\n";
-            for (const m of memberships) {
-                const { data: members } = await supabase
-                    .from('memberships')
-                    .select('user_id, role')
-                    .eq('team_id', m.team_id);
-
-                const teamData = Array.isArray(m.team) ? m.team[0] : m.team;
-                const teamName = teamData?.name || "Sans nom";
-                const teamId = teamData?.id || m.team_id;
-
-                const membersList = (members as any[])?.map(mem => `- Membre (${mem.role}) ID: ${mem.user_id}`).join(', ') || "Aucun autre membre";
-                teamsContext += `- Équipe "${teamName}" (ID: ${teamId}). Membres: ${membersList}\n`;
-            }
-        } else {
-            teamsContext = "\n\nL'utilisateur n'est dans aucune équipe.";
+            context += `\nÉquipes: ${memberships.map((m: any) => `"${m.team?.name}" (ID: ${m.team?.id})`).join(', ')}`;
         }
 
-        const tasksContext = tasks && tasks.length > 0
-            ? `\n\nTâches personnelles actuelles:\n${(tasks as any[]).map(t =>
-                `- [ID: ${t.id}] "${t.title}" (statut: ${t.status}, priorité: ${t.priority}, date: ${t.due_date})`
-            ).join('\n')}`
-            : '\n\nPas de tâches personnelles.';
+        // Historique
+        const { data: chatHistory } = await supabase.from('chat_history').select('role, content').eq('user_id', user.id).order('created_at', { ascending: false }).limit(6);
+        const cleanHistory = chatHistory?.reverse().map((h: any) => ({ role: h.role, content: h.content })) || [];
 
-        // ... (remaining history code)
-        const { data: chatHistory } = await supabase
-            .from('chat_history')
-            .select('role, content')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(10);
-
-        const cleanHistory = chatHistory?.reverse().map((h: any) => ({
-            role: h.role,
-            content: h.content
-        })) || [];
-
-        const messages = [
-            { role: 'system', content: fullPrompt + tasksContext + teamsContext },
+        const messages: any[] = [
+            { role: 'system', content: fullPrompt + context },
             ...cleanHistory
         ];
 
-        // Construction du message utilisateur (Texte ou Audio)
         if (audio) {
             messages.push({
                 role: 'user',
                 content: [
-                    { type: 'text', text: message || "L'utilisateur parle." },
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: audio.startsWith('data:') ? audio : `data:audio/wav;base64,${audio}`
-                        }
-                    }
-                ] as any
+                    { type: 'text', text: message || "L'utilisateur parle via audio." },
+                    { type: 'image_url', image_url: { url: audio.startsWith('data:') ? audio : `data:audio/wav;base64,${audio}` } }
+                ]
             });
         } else {
             messages.push({ role: 'user', content: message });
         }
 
-        // Appel à OpenRouter
+        // Appel OpenRouter
         const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 'Content-Type': 'application/json',
                 'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-                'X-Title': 'Track Habbit AI'
+                'X-Title': 'Track Habbit Companion'
             },
             body: JSON.stringify({
                 model: 'google/gemini-2.0-flash-001',
                 messages: messages,
                 max_tokens: 1000,
-                temperature: 0.7
+                temperature: 0.8
             })
         });
 
-        if (!openRouterResponse.ok) {
-            const errorData = await openRouterResponse.json();
-            throw new Error(errorData.error?.message || `Erreur OpenRouter: ${openRouterResponse.status}`);
-        }
-
         const data = await openRouterResponse.json();
-        const assistantMessage = data.choices?.[0]?.message?.content || "Désolé, je n'ai pas pu générer de réponse.";
+        const assistantMessage = data.choices?.[0]?.message?.content || "";
         const assistantMessageStr = typeof assistantMessage === 'string' ? assistantMessage : JSON.stringify(assistantMessage);
 
-        // Sauvegarder dans l'historique
+        // Sauvegarder historique
         await supabase.from('chat_history').insert([
-            { user_id: user.id, role: 'user', content: message || (audio ? "[Audio Message]" : "") },
+            { user_id: user.id, role: 'user', content: message || "[Audio Content]" },
             { user_id: user.id, role: 'assistant', content: assistantMessageStr }
         ]);
 
-        // Traiter les actions via extraction du bloc JSON
+        // Traiter les actions
         const actionsPerformed: any[] = [];
-        try {
-            let jsonString = "";
-            const jsonBlockMatch = assistantMessageStr.match(/```json([\s\S]*?)```/);
-            if (jsonBlockMatch && jsonBlockMatch[1]) {
-                jsonString = jsonBlockMatch[1];
-            } else {
-                const arrayMatch = assistantMessageStr.match(/\[\s*\{[\s\S]*"action":[\s\S]*\}\s*\]/);
-                if (arrayMatch) jsonString = arrayMatch[0];
-            }
+        const jsonBlockMatch = assistantMessageStr.match(/```json([\s\S]*?)```/) || assistantMessageStr.match(/(\{[\s\S]*"action":[\s\S]*\})/);
 
-            if (jsonString) {
-                const actionsData = JSON.parse(jsonString);
-                const actionsList = Array.isArray(actionsData) ? actionsData : [actionsData];
+        if (jsonBlockMatch) {
+            try {
+                const actionData = JSON.parse(jsonBlockMatch[1] || jsonBlockMatch[0]);
+                const actionsList = Array.isArray(actionData) ? actionData : [actionData];
 
-                for (const actionData of actionsList) {
-                    switch (actionData.action) {
+                for (const action of actionsList) {
+                    switch (action.action) {
                         case 'create_task':
-                            if (actionData.title) {
-                                const { data: newTask, error } = await supabase
-                                    .from('tasks')
-                                    .insert([{
-                                        user_id: user.id,
-                                        title: actionData.title,
-                                        description: actionData.description || null,
-                                        priority: actionData.priority || 'medium',
-                                        due_date: actionData.due_date || null,
-                                        status: 'todo'
-                                    }])
-                                    .select()
-                                    .single();
-                                if (!error && newTask) actionsPerformed.push({ type: 'task_created', task: newTask });
-                            }
+                            const { data: nt } = await supabase.from('tasks').insert([{
+                                user_id: user.id, title: action.title, priority: action.priority || 'medium',
+                                due_date: action.due_date, status: 'todo'
+                            }]).select().single();
+                            if (nt) actionsPerformed.push({ type: 'task_created', task: nt });
                             break;
 
-                        case 'update_task':
-                            if (actionData.id && actionData.updates) {
-                                const { data: updatedTask, error } = await supabase
-                                    .from('tasks')
-                                    .update(actionData.updates)
-                                    .eq('id', actionData.id)
-                                    .eq('user_id', user.id)
-                                    .select()
-                                    .single();
-                                if (!error && updatedTask) actionsPerformed.push({ type: 'task_updated', task: updatedTask });
-                            }
+                        case 'create_note':
+                            await supabase.from('notes').insert([{
+                                user_id: user.id, title: action.title, content: action.content,
+                                is_important: action.is_important || false
+                            }]);
+                            actionsPerformed.push({ type: 'note_created' });
                             break;
 
-                        case 'delete_task':
-                            if (actionData.id) {
-                                const { error } = await supabase.from('tasks').delete().eq('id', actionData.id).eq('user_id', user.id);
-                                if (!error) actionsPerformed.push({ type: 'task_deleted', id: actionData.id });
-                            }
-                            break;
-
-                        case 'delete_all_tasks':
-                            const { error: delError } = await supabase.from('tasks').delete().eq('user_id', user.id);
-                            if (!delError) actionsPerformed.push({ type: 'all_tasks_deleted' });
-                            break;
-
-                        case 'create_team_task':
-                            if (actionData.title && actionData.team_id) {
-                                const { data: newTeamTask, error } = await supabase
-                                    .from('tasks')
-                                    .insert([{
-                                        user_id: user.id, // Créateur
-                                        team_id: actionData.team_id, // Assigné à l'équipe
-                                        title: actionData.title,
-                                        description: actionData.description || null,
-                                        priority: actionData.priority || 'medium',
-                                        due_date: actionData.due_date || null,
-                                        status: 'todo'
-                                    }])
-                                    .select()
-                                    .single();
-
-                                if (!error && newTeamTask) {
-                                    actionsPerformed.push({ type: 'task_created', task: newTeamTask });
-                                }
-                            }
+                        case 'push_notification':
+                            await supabase.from('notifications').insert([{
+                                user_id: user.id, title: action.title, description: action.description,
+                                type: action.type || 'info'
+                            }]);
+                            actionsPerformed.push({ type: 'notification_sent' });
                             break;
 
                         case 'create_team':
-                            if (actionData.name) {
-                                // 1. Créer l'équipe
-                                const { data: newTeam, error: teamError } = await supabase
-                                    .from('teams')
-                                    .insert([{ name: actionData.name, created_by: user.id }])
-                                    .select()
-                                    .single();
-
-                                if (!teamError && newTeam) {
-                                    // 2. Ajouter le créateur comme propriétaire
-                                    await supabase
-                                        .from('memberships')
-                                        .insert([{ team_id: newTeam.id, user_id: user.id, role: 'owner' }]);
-
+                            if (action.name) {
+                                const { data: newTeam } = await supabase.from('teams').insert([{ name: action.name, created_by: user.id }]).select().single();
+                                if (newTeam) {
+                                    await supabase.from('memberships').insert([{ team_id: newTeam.id, user_id: user.id, role: 'owner' }]);
                                     actionsPerformed.push({ type: 'team_created', team: newTeam });
                                 }
                             }
                             break;
 
-                        case 'delete_team':
-                            if (actionData.id) {
-                                const { error } = await supabase
-                                    .from('teams')
-                                    .delete()
-                                    .eq('id', actionData.id)
-                                    .eq('created_by', user.id); // Sécurité simple
-
-                                if (!error) {
-                                    actionsPerformed.push({ type: 'team_deleted', id: actionData.id });
-                                }
-                            }
+                        case 'update_task':
+                            await supabase.from('tasks').update(action.updates).eq('id', action.id).eq('user_id', user.id);
+                            actionsPerformed.push({ type: 'task_updated' });
                             break;
 
-                        case 'mark_notification_read':
-                            if (actionData.id) {
-                                // Note: La table notifications n'existe pas encore dans ce contexte, 
-                                // mais c'est prévu pour la phase 6. On met le squelette.
-                                /* 
-                                const { error } = await supabase
-                                    .from('notifications')
-                                    .update({ read: true })
-                                    .eq('id', actionData.id)
-                                    .eq('user_id', user.id);
-                                */
-                                actionsPerformed.push({ type: 'notification_read', id: actionData.id });
-                            }
-                            break;
-
-                        case 'mark_all_notifications_read':
-                            /*
-                            await supabase
-                                .from('notifications')
-                                .update({ read: true })
-                                .eq('user_id', user.id);
-                            */
-                            actionsPerformed.push({ type: 'all_notifications_read' });
+                        case 'delete_task':
+                            await supabase.from('tasks').delete().eq('id', action.id).eq('user_id', user.id);
+                            actionsPerformed.push({ type: 'task_deleted' });
                             break;
                     }
                 }
+            } catch (e) {
+                console.error("Action parsing error:", e);
             }
-        } catch (e) {
-            console.error("Erreur traitement actions:", e);
         }
 
         return NextResponse.json({
             message: assistantMessageStr,
-            actions: actionsPerformed,
-            taskCreated: actionsPerformed.find(a => a.type === 'task_created')?.task || null
+            actions: actionsPerformed
         });
 
     } catch (error: any) {
-        console.error('Erreur API Chat OpenRouter:', error);
-
-        // Handle 429 specifically if possible
-        if (error.status === 429) {
-            return NextResponse.json(
-                { error: 'Trop de requêtes. Veuillez patienter un instant ou vérifier votre solde OpenRouter.' },
-                { status: 429 }
-            );
-        }
-
-        return NextResponse.json(
-            { error: error.message || 'Erreur interne du serveur' },
-            { status: 500 }
-        );
+        console.error('Erreur API Chat:', error);
+        return NextResponse.json({ error: error.message || 'Erreur interne' }, { status: 500 });
     }
 }
