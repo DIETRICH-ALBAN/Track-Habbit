@@ -11,7 +11,6 @@ import {
 } from 'framer-motion';
 import {
     Children,
-    cloneElement,
     createContext,
     useContext,
     useEffect,
@@ -37,6 +36,7 @@ type DockProps = {
 type DockItemProps = {
     className?: string;
     children: React.ReactNode;
+    onClick?: () => void;
 };
 type DockLabelProps = {
     className?: string;
@@ -53,21 +53,27 @@ type DocContextType = {
     magnification: number;
     distance: number;
 };
-type DockProviderProps = {
-    children: React.ReactNode;
-    value: DocContextType;
+
+type DockItemContextType = {
+    width: MotionValue<number>;
+    isHovered: MotionValue<number>;
 };
 
 const DockContext = createContext<DocContextType | undefined>(undefined);
-
-function DockProvider({ children, value }: DockProviderProps) {
-    return <DockContext.Provider value={value}>{children}</DockContext.Provider>;
-}
+const DockItemContext = createContext<DockItemContextType | undefined>(undefined);
 
 function useDock() {
     const context = useContext(DockContext);
     if (!context) {
         throw new Error('useDock must be used within an DockProvider');
+    }
+    return context;
+}
+
+function useDockItem() {
+    const context = useContext(DockItemContext);
+    if (!context) {
+        throw new Error('useDockItem must be used within an DockItemProvider');
     }
     return context;
 }
@@ -115,15 +121,15 @@ function Dock({
                 role='toolbar'
                 aria-label='Application dock'
             >
-                <DockProvider value={{ mouseX, spring, distance, magnification }}>
+                <DockContext.Provider value={{ mouseX, spring, distance, magnification }}>
                     {children}
-                </DockProvider>
+                </DockContext.Provider>
             </motion.div>
         </motion.div>
     );
 }
 
-function DockItem({ children, className }: DockItemProps) {
+function DockItem({ children, className, onClick }: DockItemProps) {
     const ref = useRef<HTMLDivElement>(null);
 
     const { distance, magnification, mouseX, spring } = useDock();
@@ -151,25 +157,24 @@ function DockItem({ children, className }: DockItemProps) {
             onHoverEnd={() => isHovered.set(0)}
             onFocus={() => isHovered.set(1)}
             onBlur={() => isHovered.set(0)}
+            onClick={onClick}
             className={cn(
-                'relative inline-flex items-center justify-center',
+                'relative inline-flex items-center justify-center cursor-pointer',
                 className
             )}
             tabIndex={0}
             role='button'
             aria-haspopup='true'
         >
-            {Children.map(children, (child) =>
-                // @ts-ignore
-                cloneElement(child as React.ReactElement, { width, isHovered })
-            )}
+            <DockItemContext.Provider value={{ width, isHovered }}>
+                {children}
+            </DockItemContext.Provider>
         </motion.div>
     );
 }
 
-function DockLabel({ children, className, ...rest }: DockLabelProps) {
-    const restProps = rest as Record<string, unknown>;
-    const isHovered = restProps['isHovered'] as MotionValue<number>;
+function DockLabel({ children, className }: DockLabelProps) {
+    const { isHovered } = useDockItem();
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -202,9 +207,8 @@ function DockLabel({ children, className, ...rest }: DockLabelProps) {
     );
 }
 
-function DockIcon({ children, className, ...rest }: DockIconProps) {
-    const restProps = rest as Record<string, unknown>;
-    const width = restProps['width'] as MotionValue<number>;
+function DockIcon({ children, className }: DockIconProps) {
+    const { width } = useDockItem();
 
     const widthTransform = useTransform(width, (val) => val / 2);
 

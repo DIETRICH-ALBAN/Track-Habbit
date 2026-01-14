@@ -25,7 +25,7 @@ export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShow
     return (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] pb-[env(safe-area-inset-bottom)] px-4 w-full flex justify-center">
             <Dock
-                className="items-end pb-3 bg-black/40 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-3xl"
+                className="items-end pb-3 bg-[#0A0A0A]/60 backdrop-blur-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-3xl"
                 panelHeight={64}
                 magnification={80}
                 distance={140}
@@ -33,6 +33,7 @@ export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShow
                 {items.map((item) => (
                     <DockItem
                         key={item.id}
+                        onClick={item.onClick}
                         className={cn(
                             "aspect-square rounded-2xl transition-all duration-300",
                             item.special
@@ -42,12 +43,10 @@ export function NavigationDock({ activeTab, setActiveTab, setIsAIActive, setShow
                                     : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white"
                         )}
                     >
-                        <button onClick={item.onClick} className="w-full h-full flex items-center justify-center">
-                            <DockLabel className="bg-[#1a1a1a] border-white/10 text-white font-bold">{item.label}</DockLabel>
-                            <DockIcon>
-                                <item.icon size={22} className={cn(item.special && "drop-shadow-[0_0_8px_white]")} />
-                            </DockIcon>
-                        </button>
+                        <DockLabel className="bg-[#1a1a1a] border-white/10 text-white font-bold">{item.label}</DockLabel>
+                        <DockIcon>
+                            <item.icon size={22} className={cn(item.special && "drop-shadow-[0_0_8px_white]")} />
+                        </DockIcon>
                     </DockItem>
                 ))}
             </Dock>
