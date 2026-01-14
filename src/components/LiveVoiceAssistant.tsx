@@ -40,8 +40,8 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const statusRef = useRef(status);
-    const lastTalkingTimeRef = useRef<number>(Date.now());
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => { statusRef.current = status; }, [status]);
 
@@ -156,6 +156,9 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             recognition.interimResults = true;
 
             recognition.onresult = (event: any) => {
+                // Reset silence timer on every new result
+                if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+
                 let final = "";
                 let interim = "";
 
@@ -173,10 +176,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     setTranscript(result);
                     setTextInput(result);
                     currentFullTranscriptRef.current = result;
+
+                    // Auto-reply after 4 seconds of silence
+                    silenceTimeoutRef.current = setTimeout(() => {
+                        console.log("[VoiceAssistant] Silence detected, auto-sending...");
+                        stopListeningAndSend();
+                    }, 4000);
                 }
             };
 
             recognition.onerror = (event: any) => {
+                if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
                 console.error("Rec Error", event.error);
                 if (event.error !== 'no-speech') {
                     setErrorMessage(event.error === 'not-allowed' ? "Micro bloqué" : "Erreur Micro");
@@ -185,6 +195,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             };
 
             recognition.onend = () => {
+                if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
                 // AUTO-SUBMIT: If we have text and the session ended naturally (silence)
                 if (statusRef.current === "listening") {
                     const finalMsg = currentFullTranscriptRef.current.trim();
@@ -206,6 +217,7 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     };
 
     const stopListeningAndSend = () => {
+        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
         if (recognitionRef.current) {
             // Calling stop() will trigger onend, which handles the submission
             recognitionRef.current.stop();
