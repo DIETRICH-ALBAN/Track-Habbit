@@ -167,7 +167,7 @@ export default function DashboardPage() {
         );
       case "calendar":
         return (
-          <div className="h-[calc(100vh-200px)]">
+          <div className="h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] min-h-[400px]">
             <CalendarView tasks={tasks} onTaskClick={(task) => toggleTaskStatus(task)} />
           </div>
         );

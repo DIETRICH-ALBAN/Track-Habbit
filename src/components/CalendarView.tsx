@@ -43,35 +43,35 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
     const selectedDayTasks = selectedDate ? getDayTasks(selectedDate) : [];
 
     return (
-        <div className="flex flex-col xl:flex-row gap-8 h-full relative z-10">
+        <div className="flex flex-col xl:flex-row gap-6 h-full relative z-10 overflow-hidden">
             {/* Calendar Grid */}
             <div
-                className="p-8 rounded-[32px] border border-white/5 flex-1 min-h-[400px] flex flex-col backdrop-blur-md shadow-2xl"
+                className="p-6 rounded-[24px] border border-white/5 flex-1 min-h-0 flex flex-col backdrop-blur-md shadow-2xl overflow-hidden"
                 style={{ background: 'var(--bg-glass-gradient)' }}
             >
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-black text-white capitalize tracking-tight">
+                <div className="flex justify-between items-center mb-4 shrink-0">
+                    <h2 className="text-xl font-black text-white capitalize tracking-tight">
                         {format(currentMonth, "MMMM", { locale: fr })} <span className="text-[var(--accent-tan)]">{format(currentMonth, "yyyy")}</span>
                     </h2>
                     <div className="flex gap-2">
-                        <button onClick={prevMonth} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
-                            <ChevronLeft size={20} />
+                        <button onClick={prevMonth} className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
+                            <ChevronLeft size={18} />
                         </button>
-                        <button onClick={nextMonth} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
-                            <ChevronRight size={20} />
+                        <button onClick={nextMonth} className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
+                            <ChevronRight size={18} />
                         </button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-7 mb-6">
+                <div className="grid grid-cols-7 mb-3 shrink-0">
                     {weekDays.map(day => (
-                        <div key={day} className="text-center text-[10px] font-bold text-[var(--accent-tan)] uppercase tracking-[0.2em]">
+                        <div key={day} className="text-center text-[9px] font-bold text-[var(--accent-tan)] uppercase tracking-[0.15em]">
                             {day}
                         </div>
                     ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-2 flex-1">
+                <div className="grid grid-cols-7 gap-1.5 flex-1 min-h-0 overflow-y-auto">
                     {days.map((day, dayIdx) => {
                         const dayTasks = getDayTasks(day);
                         const hasTasks = dayTasks.length > 0;
@@ -83,15 +83,15 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
                                 key={day.toString()}
                                 onClick={() => setSelectedDate(day)}
                                 className={`
-                                    relative p-2 rounded-[18px] cursor-pointer transition-all min-h-[70px] flex flex-col items-center justify-center gap-1 border
+                                    relative p-1.5 rounded-xl cursor-pointer transition-all min-h-[44px] flex flex-col items-center justify-center gap-0.5 border
                                     ${!isCurrentMonth ? "text-white/20 opacity-30" : "text-white"}
-                                    ${isSelected ? "bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)]/40 shadow-[0_0_20px_rgba(6,182,212,0.2)]" : "border-white/5 hover:bg-white/5"}
+                                    ${isSelected ? "bg-[var(--accent-cyan)]/20 border-[var(--accent-cyan)]/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]" : "border-transparent hover:bg-white/5 hover:border-white/5"}
                                     ${isToday(day) && !isSelected ? "border-[var(--accent-tan)]/40 text-[var(--accent-tan)] font-black" : ""}
                                 `}
                             >
-                                <span className="text-sm font-bold">{format(day, dateFormat)}</span>
+                                <span className="text-xs font-bold">{format(day, dateFormat)}</span>
                                 {hasTasks && (
-                                    <div className="flex gap-1 mt-1">
+                                    <div className="flex gap-0.5">
                                         {dayTasks.slice(0, 3).map((t, i) => (
                                             <div
                                                 key={i}
