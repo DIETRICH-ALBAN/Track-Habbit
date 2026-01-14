@@ -177,11 +177,11 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                     setTextInput(result);
                     currentFullTranscriptRef.current = result;
 
-                    // Auto-reply after 4 seconds of silence
+                    // Auto-reply after 8 seconds of silence (provides more "breathing room")
                     silenceTimeoutRef.current = setTimeout(() => {
                         console.log("[VoiceAssistant] Silence detected, auto-sending...");
                         stopListeningAndSend();
-                    }, 4000);
+                    }, 8000);
                 }
             };
 
