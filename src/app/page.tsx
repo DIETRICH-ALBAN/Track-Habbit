@@ -43,6 +43,10 @@ export default function DashboardPage() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [isAIActive, setIsAIActive] = useState(false);
 
+  // Filter States
+  const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'todo' | 'done'>('all');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -119,52 +123,88 @@ export default function DashboardPage() {
 
             {/* TASKS SECTION */}
             <section className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
-                <span className="text-xs text-[var(--text-tertiary)]">{todoTasks.length} restantes</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
+                  <p className="text-[10px] text-white/30 mt-1 uppercase tracking-wider">{tasks.length} tâches au total</p>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 backdrop-blur-md">
+                    {['all', 'todo', 'done'].map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setTaskStatusFilter(f as any)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                          taskStatusFilter === f ? "bg-[var(--accent-cyan)] text-[var(--bg-primary)] shadow-lg" : "text-white/40 hover:text-white"
+                        )}
+                      >
+                        {f === 'all' ? 'Toutes' : f === 'todo' ? 'À faire' : 'Fait'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <select
+                    value={taskPriorityFilter}
+                    onChange={(e) => setTaskPriorityFilter(e.target.value as any)}
+                    className="bg-white/5 border border-white/5 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white/60 focus:outline-none focus:border-[var(--accent-cyan)]/50 backdrop-blur-md"
+                  >
+                    <option value="all">Priorité (Toutes)</option>
+                    <option value="high">Haute</option>
+                    <option value="medium">Moyenne</option>
+                    <option value="low">Basse</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {todoTasks.length > 0 ? todoTasks.slice(0, 7).map((task, i) => (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    onClick={() => toggleTaskStatus(task)}
-                    className="group flex items-center gap-4 p-4 rounded-[var(--radius-lg)] border border-white/5 cursor-pointer transition-all hover:border-[var(--accent-cyan)]/40 backdrop-blur-md"
-                    style={{ background: 'var(--bg-glass-gradient)' }}
-                  >
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${task.status === 'done' ? 'bg-[var(--accent-cyan)] border-[var(--accent-cyan)]' : 'border-[var(--accent-steel)]'}`}>
-                      {task.status === 'done' && <CheckCircle2 size={10} className="text-[var(--bg-primary)]" />}
+              <div className="space-y-6">
+                {(() => {
+                  const filtered = tasks.filter(t => {
+                    const statusMatch = taskStatusFilter === 'all' || t.status === taskStatusFilter;
+                    const priorityMatch = taskPriorityFilter === 'all' || t.priority === taskPriorityFilter;
+                    return statusMatch && priorityMatch;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div
+                        className="py-16 text-center rounded-[var(--radius-lg)] backdrop-blur-sm border border-dashed border-white/10"
+                        style={{ background: 'var(--bg-glass-gradient)' }}
+                      >
+                        <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
+                        <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche ne correspond aux filtres.</p>
+                      </div>
+                    );
+                  }
+
+                  // Group by Date
+                  const grouped: Record<string, Task[]> = {};
+                  filtered.forEach(t => {
+                    const date = t.due_date ? format(new Date(t.due_date), "yyyy-MM-dd") : 'unscheduled';
+                    if (!grouped[date]) grouped[date] = [];
+                    grouped[date].push(t);
+                  });
+
+                  return Object.entries(grouped).sort().map(([date, dateTasks]) => (
+                    <div key={date} className="space-y-3">
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent-tan)] pl-1">
+                        {date === 'unscheduled' ? 'Non planifié' : format(new Date(date), "EEEE d MMMM", { locale: fr })}
+                      </h3>
+                      <div className="grid gap-3">
+                        {dateTasks.map((task, i) => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onClick={() => toggleTaskStatus(task)}
+                            index={i}
+                          />
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-medium text-base leading-snug truncate ${task.status === 'done' ? 'line-through text-white/30' : 'text-white'}`}>{task.title}</h3>
-                      {task.due_date && (
-                        <p className="text-[11px] text-[var(--accent-blue)] mt-0.5">
-                          {format(new Date(task.due_date), "dd MMM • HH:mm", { locale: fr })}
-                        </p>
-                      )}
-                    </div>
-                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${task.priority === 'high' ? 'bg-rose-500/15 text-rose-400' :
-                      task.priority === 'medium' ? 'bg-[var(--accent-tan)]/15 text-[var(--accent-tan)]' :
-                        'bg-white/5 text-white/30'
-                      }`}>
-                      {task.priority || 'normal'}
-                    </div>
-                  </motion.div>
-                )) : (
-                  <div
-                    className="py-16 text-center rounded-[var(--radius-lg)] backdrop-blur-sm border border-dashed border-white/10"
-                    style={{ background: 'var(--bg-glass-gradient)' }}
-                  >
-                    <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
-                    <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche en cours.</p>
-                    <button onClick={() => setShowTaskForm(true)} className="mt-4 text-sm font-medium text-[var(--accent-cyan)] hover:underline">
-                      Créer votre première tâche
-                    </button>
-                  </div>
-                )}
+                  ));
+                })()}
               </div>
             </section>
           </>
