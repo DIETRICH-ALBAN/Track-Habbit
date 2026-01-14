@@ -46,9 +46,13 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
         <div className="flex flex-col xl:flex-row gap-6 h-full relative z-10 overflow-hidden">
             {/* Calendar Grid */}
             <div
-                className="p-6 rounded-[24px] border border-white/5 flex-1 min-h-0 flex flex-col backdrop-blur-md shadow-2xl overflow-hidden"
-                style={{ background: 'var(--bg-glass-gradient)' }}
+                className="relative overflow-hidden p-6 rounded-[32px] border border-white/10 flex-1 min-h-[400px] flex flex-col backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                style={{
+                    background: 'rgba(25, 25, 25, 0.4)',
+                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%)'
+                }}
             >
+                <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
                 <div className="flex justify-between items-center mb-4 shrink-0">
                     <h2 className="text-xl font-black text-white capitalize tracking-tight">
                         {format(currentMonth, "MMMM", { locale: fr })} <span className="text-[var(--accent-tan)]">{format(currentMonth, "yyyy")}</span>
@@ -108,9 +112,13 @@ export default function CalendarView({ tasks, onTaskClick }: CalendarViewProps) 
 
             {/* Selected Day Tasks */}
             <div
-                className="w-full xl:w-[400px] p-8 rounded-[32px] border border-white/5 flex flex-col backdrop-blur-md shadow-2xl"
-                style={{ background: 'var(--bg-glass-gradient)' }}
+                className="relative overflow-hidden w-full xl:w-[400px] p-8 rounded-[38px] border border-white/10 flex flex-col backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.6)]"
+                style={{
+                    background: 'rgba(30, 30, 30, 0.5)',
+                    backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 100%)'
+                }}
             >
+                <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none" />
                 <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5">
                     <div className="w-10 h-10 rounded-xl bg-[var(--accent-cyan)]/10 flex items-center justify-center text-[var(--accent-cyan)]">
                         <Clock size={16} />
