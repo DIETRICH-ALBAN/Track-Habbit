@@ -348,15 +348,15 @@ export default function DashboardPage() {
           {renderContent()}
         </main>
 
-        {/* Floating Navigation (Mobile Only) */}
-        <MobileTabBar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          setIsAIActive={setIsAIActive}
-          setShowTaskForm={setShowTaskForm}
-        />
-
       </div>
+
+      {/* Floating Navigation (Mobile Only) - Moved outside scrollable container */}
+      <MobileTabBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        setIsAIActive={setIsAIActive}
+        setShowTaskForm={setShowTaskForm}
+      />
 
       {/* AI Assistant Panel - Desktop: inline, Mobile: overlay */}
       <AnimatePresence>
