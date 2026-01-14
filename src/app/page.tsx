@@ -26,7 +26,7 @@ import { fr } from "date-fns/locale";
 import { NeuralSphere } from "@/components/NeuralSphere"; // Kept for imports but unused
 import SplineObject from "@/components/SplineObject";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
-import { MobileTabBar } from "@/components/MobileTabBar";
+import { NavigationDock } from "@/components/NavigationDock";
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -305,7 +305,7 @@ export default function DashboardPage() {
       {/* PC Menu (Desktop Sidebar - Wrobs Style) */}
       <DesktopSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <div className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth pb-24 md:pb-0">
+      <div className="relative z-10 flex-1 min-w-0 flex flex-col h-screen overflow-y-auto overflow-x-hidden bg-[#141414]/80 backdrop-blur-[2px] md:rounded-l-[32px] md:my-2 md:mr-2 border-l border-white/5 scroll-smooth pb-32">
 
         {/* HEADER - Mobile Only */}
         <header
@@ -350,8 +350,8 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Floating Navigation (Mobile Only) - Moved outside scrollable container */}
-      <MobileTabBar
+      {/* Floating Navigation (Global Dock) */}
+      <NavigationDock
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         setIsAIActive={setIsAIActive}
