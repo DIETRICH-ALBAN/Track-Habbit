@@ -225,27 +225,26 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 </button>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col items-center justify-center px-4 relative">
+            {/* Main Content - Proper flex layout without absolute positioning */}
+            <div className="flex-1 flex flex-col items-center px-6 py-4 overflow-y-auto">
                 {/* Status Indicator */}
-                <div className="absolute top-10 flex flex-col items-center gap-6">
-                    <div className={`relative flex items-center justify-center transition-all duration-700 ${status === 'listening' ? 'scale-110' : 'scale-100'}`}>
-                        <div className={`w-40 h-40 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-cyan)] shadow-[0_0_60px_rgba(6,182,212,0.3)] bg-[var(--accent-cyan)]/10' :
+                <div className="flex flex-col items-center gap-4 mb-6">
+                    <div className={`relative flex items-center justify-center transition-all duration-700 ${status === 'listening' ? 'scale-105' : 'scale-100'}`}>
+                        <div className={`w-24 h-24 lg:w-28 lg:h-28 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${status === 'listening' ? 'border-[var(--accent-cyan)] shadow-[0_0_40px_rgba(6,182,212,0.3)] bg-[var(--accent-cyan)]/10' :
                             status === 'processing' ? 'border-white/20 animate-pulse' :
-                                status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_60px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
+                                status === 'speaking' ? 'border-[var(--accent-tan)] shadow-[0_0_40px_rgba(216,180,154,0.3)] bg-[var(--accent-tan)]/10' :
                                     'border-white/5 bg-white/[0.02]'
                             }`}>
-                            {status === 'processing' ? <Loader2 size={48} className="text-white animate-spin" /> :
-                                status === 'speaking' ? <Volume2 size={48} className="text-[var(--accent-tan)] animate-pulse" /> :
-                                    status === 'listening' ? <Mic size={48} className="text-[var(--accent-cyan)]" /> :
-                                        <Sparkles size={48} className="text-white/10" />}
+                            {status === 'processing' ? <Loader2 size={36} className="text-white animate-spin" /> :
+                                status === 'speaking' ? <Volume2 size={36} className="text-[var(--accent-tan)] animate-pulse" /> :
+                                    status === 'listening' ? <Mic size={36} className="text-[var(--accent-cyan)]" /> :
+                                        <Sparkles size={36} className="text-white/10" />}
                         </div>
-                        {/* Orbiting Ring for Listening Mode */}
                         {status === 'listening' && (
-                            <div className="absolute inset-[-15px] border border-[var(--accent-cyan)]/20 rounded-full animate-[spin_4s_linear_infinite]" />
+                            <div className="absolute inset-[-10px] border border-[var(--accent-cyan)]/20 rounded-full animate-[spin_4s_linear_infinite]" />
                         )}
                     </div>
-                    <p className="text-sm font-black uppercase tracking-[0.3em] text-[var(--accent-tan)]">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--accent-tan)] text-center">
                         {status === 'listening' ? "ÉCOUTE EN COURS" :
                             status === 'processing' ? "RÉFLEXION" :
                                 status === 'speaking' ? "RÉPONSE" :
@@ -254,17 +253,17 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 </div>
 
                 {/* Transcript Area */}
-                <div className="w-full max-w-lg mt-40 space-y-6 flex-1 min-h-0 flex flex-col">
+                <div className="w-full flex-1 min-h-0 flex flex-col">
                     <div
-                        className="flex-1 min-h-[160px] max-h-[40vh] rounded-[32px] p-8 border border-white/5 flex flex-col items-center justify-center text-center overflow-y-auto scrollbar-hide backdrop-blur-md"
-                        style={{ background: 'var(--bg-glass-gradient)' }}
+                        className="flex-1 min-h-[100px] rounded-2xl p-6 border border-white/5 flex flex-col items-center justify-center text-center overflow-y-auto"
+                        style={{ background: 'rgba(10,10,10,0.5)' }}
                     >
                         {textInput || transcript ? (
-                            <p className="text-2xl text-white font-bold leading-tight break-words w-full">
+                            <p className="text-lg text-white font-semibold leading-relaxed break-words w-full">
                                 {transcript || textInput}
                             </p>
                         ) : (
-                            <p className="text-white/20 font-medium tracking-wide">
+                            <p className="text-white/30 text-sm">
                                 Appuyez sur le micro pour parler<br />ou tapez votre message...
                             </p>
                         )}
@@ -272,33 +271,29 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 </div>
 
                 {errorMessage && (
-                    <div className="mt-6 px-6 py-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20 text-sm font-bold tracking-tight uppercase">
+                    <div className="mt-4 px-4 py-2 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20 text-xs font-bold uppercase">
                         {errorMessage}
                     </div>
                 )}
             </div>
 
             {/* Controls */}
-            <div className="p-8 pb-12 w-full max-w-lg mx-auto">
-                <div className="flex items-end gap-4">
+            <div className="p-4 lg:p-6 w-full shrink-0 border-t border-white/5">
+                <div className="flex items-center gap-3">
                     <button
                         onClick={() => status === 'listening' ? stopListeningAndSend() : startListening()}
-                        className={`w-20 h-20 rounded-[24px] flex-shrink-0 flex items-center justify-center transition-all duration-500 shadow-2xl relative group overflow-hidden ${status === 'listening' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-[var(--accent-cyan)] shadow-[var(--accent-cyan)]/30'
+                        className={`w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center transition-all duration-300 shadow-lg ${status === 'listening' ? 'bg-rose-500 shadow-rose-500/30' : 'bg-[var(--accent-cyan)] shadow-[var(--accent-cyan)]/30'
                             }`}
                     >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        {status === 'listening' ? <Send size={32} className="relative z-10" /> : <Mic size={32} className="relative z-10" />}
+                        {status === 'listening' ? <Send size={24} /> : <Mic size={24} />}
                     </button>
 
-                    <div
-                        className="flex-1 rounded-[24px] p-2 border border-white/5 flex items-center gap-2 backdrop-blur-md"
-                        style={{ background: 'var(--bg-glass-gradient)' }}
-                    >
+                    <div className="flex-1 rounded-xl p-1.5 border border-white/5 flex items-center gap-2" style={{ background: 'rgba(10,10,10,0.5)' }}>
                         <input
                             value={textInput}
                             onChange={(e) => setTextInput(e.target.value)}
                             placeholder="Écrivez votre commande..."
-                            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/20 px-5 h-16 text-lg font-medium"
+                            className="flex-1 bg-transparent border-none outline-none text-white placeholder:text-white/30 px-3 h-11 text-sm"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
@@ -309,16 +304,16 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                         {textInput.trim() && status !== 'listening' && (
                             <button
                                 onClick={() => stopListeningAndSend()}
-                                className="w-12 h-12 bg-[var(--accent-tan)]/10 text-[var(--accent-tan)] rounded-xl hover:bg-[var(--accent-tan)]/20 transition-all flex items-center justify-center"
+                                className="w-9 h-9 bg-[var(--accent-tan)]/10 text-[var(--accent-tan)] rounded-lg hover:bg-[var(--accent-tan)]/20 transition-all flex items-center justify-center"
                             >
-                                <Send size={20} />
+                                <Send size={16} />
                             </button>
                         )}
                     </div>
                 </div>
-                <div className="flex items-center justify-center gap-2 mt-8 opacity-20">
-                    <Activity size={12} className="text-[var(--accent-cyan)]" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Track Habbit AI Core</span>
+                <div className="flex items-center justify-center gap-2 mt-4 opacity-30">
+                    <Activity size={10} className="text-[var(--accent-cyan)]" />
+                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-white">Track Habbit AI</span>
                 </div>
             </div>
         </div>
