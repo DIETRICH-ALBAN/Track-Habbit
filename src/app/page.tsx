@@ -28,8 +28,14 @@ const SplineObject = dynamic(() => import("@/components/SplineObject"), {
   loading: () => <div className="absolute inset-0 bg-[#0A0A0A]" />
 });
 const LiveVoiceAssistant = dynamic(() => import("@/components/LiveVoiceAssistant"), { ssr: false });
-const CalendarView = dynamic(() => import("@/components/CalendarView"), { ssr: false });
-const AIChat = dynamic(() => import("@/components/AIChat"), { ssr: false });
+const CalendarView = dynamic(() => import("@/components/CalendarView"), {
+  ssr: false,
+  loading: () => <div className="h-[calc(100vh-200px)] flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[var(--accent-cyan)]" /></div>
+});
+const AIChat = dynamic(() => import("@/components/AIChat"), {
+  ssr: false,
+  loading: () => <div className="h-[calc(100vh-200px)] flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[var(--accent-tan)]" /></div>
+});
 const NotificationPanel = dynamic(() => import("@/components/NotificationPanel"), { ssr: false });
 const DocumentImport = dynamic(() => import("@/components/DocumentImport"), { ssr: false });
 
@@ -118,7 +124,33 @@ export default function DashboardPage() {
 
   const [showTeamForm, setShowTeamForm] = useState(false);
 
-  const renderContent = () => {
+  const [visitedViews, setVisitedViews] = useState<Set<string>>(new Set(["home", "dashboard"]));
+
+  useEffect(() => {
+    if (!visitedViews.has(activeTab)) {
+      setVisitedViews(prev => new Set(prev).add(activeTab));
+    }
+  }, [activeTab, visitedViews]);
+
+  const filteredHomeTasks = useMemo(() => {
+    return tasks.filter(t => {
+      const statusMatch = taskStatusFilter === 'all' || t.status === taskStatusFilter;
+      const priorityMatch = taskPriorityFilter === 'all' || t.priority === taskPriorityFilter;
+      return statusMatch && priorityMatch;
+    });
+  }, [tasks, taskStatusFilter, taskPriorityFilter]);
+
+  const groupedHomeTasks = useMemo(() => {
+    const grouped: Record<string, Task[]> = {};
+    filteredHomeTasks.forEach(t => {
+      const date = t.due_date ? format(new Date(t.due_date), "yyyy-MM-dd") : 'unscheduled';
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push(t);
+    });
+    return grouped;
+  }, [filteredHomeTasks]);
+
+  const unusedRenderContent = () => {
     switch (activeTab) {
       case "home":
       case "dashboard":
@@ -475,7 +507,296 @@ export default function DashboardPage() {
             </h1>
           </div>
 
-          {renderContent()}
+          {/* HOME / DASHBOARD */}
+          <div className={cn("space-y-8", (activeTab === 'home' || activeTab === 'dashboard') ? "block" : "hidden")}>
+            {/* STATS ROW */}
+            <section className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Statistiques</h2>
+                <div className="hidden md:flex items-center gap-3 lg:gap-6">
+                  <button
+                    onClick={() => setIsAIActive(true)}
+                    className="flex items-center gap-2 text-sm font-bold text-[var(--accent-tan)] hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    <Sparkles size={16} />
+                    Assistant IA
+                  </button>
+                  <button
+                    onClick={() => setShowTaskForm(true)}
+                    className="flex items-center gap-2 text-sm font-bold text-[var(--accent-cyan)] hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    <Plus size={16} />
+                    Nouvelle tâche
+                  </button>
+                </div>
+              </div>
+              <div className={`grid gap-4 transition-all duration-300 ${isAIActive ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4'}`}>
+                <StatCard label="Total Tâches" value={tasks.length} icon={ListChecks} delay={0} />
+                <StatCard label="En Cours" value={todoTasks.length} icon={Activity} trend="neutral" delay={0.05} />
+                <StatCard label="Aujourd'hui" value={todayTasks.length} icon={Clock} trend="up" trendValue={`+${todayTasks.length}`} delay={0.1} />
+                <StatCard label="Efficacité" value={`${efficiency}%`} icon={Sparkles} trend={efficiency > 50 ? "up" : "down"} trendValue={efficiency > 50 ? "Bon" : "À améliorer"} delay={0.15} />
+              </div>
+            </section>
+
+            {/* TASKS SECTION */}
+            <section className="relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[var(--text-tertiary)]">Vos Tâches</h2>
+                  <p className="text-[10px] text-white/30 mt-1 uppercase tracking-wider">{tasks.length} tâches au total</p>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 backdrop-blur-md">
+                    {['all', 'todo', 'done'].map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setTaskStatusFilter(f as any)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all",
+                          taskStatusFilter === f ? "bg-[var(--accent-cyan)] text-[var(--bg-primary)] shadow-lg" : "text-white/40 hover:text-white"
+                        )}
+                      >
+                        {f === 'all' ? 'Toutes' : f === 'todo' ? 'À faire' : 'Fait'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <select
+                    value={taskPriorityFilter}
+                    onChange={(e) => setTaskPriorityFilter(e.target.value as any)}
+                    className="bg-white/5 border border-white/5 rounded-xl px-3 py-1.5 text-[10px] font-bold text-white/60 focus:outline-none focus:border-[var(--accent-cyan)]/50 backdrop-blur-md"
+                  >
+                    <option value="all">Priorité (Toutes)</option>
+                    <option value="high">Haute</option>
+                    <option value="medium">Moyenne</option>
+                    <option value="low">Basse</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {filteredHomeTasks.length === 0 ? (
+                  <div
+                    className="py-16 text-center rounded-[var(--radius-lg)] backdrop-blur-sm border border-dashed border-white/10"
+                    style={{ background: 'var(--bg-glass-gradient)' }}
+                  >
+                    <Sparkles size={32} className="text-[var(--accent-cyan)]/50 mx-auto mb-3" />
+                    <p className="text-[var(--text-tertiary)] text-sm">Aucune tâche ne correspond aux filtres.</p>
+                  </div>
+                ) : (
+                  Object.entries(groupedHomeTasks).sort().map(([date, dateTasks]) => (
+                    <div key={date} className="space-y-3">
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent-tan)] pl-1">
+                        {date === 'unscheduled' ? 'Non planifié' : format(new Date(date), "EEEE d MMMM", { locale: fr })}
+                      </h3>
+                      <div className="grid gap-3">
+                        {dateTasks.map((task, i) => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onClick={() => toggleTaskStatus(task)}
+                            index={i}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )))}
+              </div>
+            </section>
+          </div>
+
+          {/* CALENDAR */}
+          <div className={activeTab === 'calendar' ? "block" : "hidden"}>
+            {visitedViews.has('calendar') && (
+              <div className="h-[calc(100vh-180px)] md:h-[calc(100vh-140px)] min-h-[400px]">
+                <CalendarView tasks={tasks} onTaskClick={(task) => toggleTaskStatus(task)} />
+              </div>
+            )}
+          </div>
+
+          {/* CHAT */}
+          <div className={activeTab === 'chat' ? "block" : "hidden"}>
+            {visitedViews.has('chat') && (
+              <div className="h-[calc(100vh-200px)] flex flex-col">
+                <AIChat onTaskCreated={() => { fetchTasks(); fetchNotes(); }} />
+              </div>
+            )}
+          </div>
+
+          {/* TEAMS */}
+          <div className={activeTab === 'teams' ? "block" : "hidden"}>
+            {visitedViews.has('teams') && (
+              <div className="space-y-6 relative z-10">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white tracking-tight">Mes <span className="text-[var(--accent-tan)]">Équipes</span></h2>
+                  <button
+                    onClick={() => setShowTeamForm(true)}
+                    className="btn-primary"
+                  >
+                    <Plus size={18} />
+                    Nouvelle Équipe
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {teams.length > 0 ? teams.map((team, i) => (
+                    <motion.div
+                      key={team.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="p-6 rounded-[24px] border border-white/5 transition-all cursor-pointer group backdrop-blur-md"
+                      style={{ background: 'var(--bg-glass-gradient)' }}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 rounded-xl bg-[var(--accent-cyan)]/10 flex items-center justify-center text-[var(--accent-cyan)] group-hover:scale-110 transition-transform">
+                          <Users size={24} />
+                        </div>
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--accent-tan)]">
+                          {tasks.filter(t => t.team_id === team.id).length} Tâches
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold mb-1 text-white">{team.name}</h3>
+                      <p className="text-xs text-[var(--text-secondary)]">Propriétaire: <span className="text-[var(--accent-tan)]">{team.created_by === (user?.id || '') ? 'Vous' : 'Autre'}</span></p>
+                    </motion.div>
+                  )) : (
+                    <div
+                      className="col-span-full py-20 text-center rounded-[24px] border border-dashed border-white/10 backdrop-blur-sm"
+                      style={{ background: 'var(--bg-glass-gradient)' }}
+                    >
+                      <p className="text-[var(--text-secondary)]">Vous n'avez pas encore d'équipe.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* NOTIFICATIONS */}
+          <div className={activeTab === 'notifications' ? "block" : "hidden"}>
+            {visitedViews.has('notifications') && (
+              <div className="max-w-2xl mx-auto py-10 relative z-10">
+                <NotificationPanel onClose={() => setActiveTab('home')} />
+              </div>
+            )}
+          </div>
+
+          {/* STATS */}
+          <div className={activeTab === 'stats' ? "block" : "hidden"}>
+            {visitedViews.has('stats') && (
+              <div className="space-y-8 relative z-10">
+                <h2 className="text-2xl font-bold mb-6 text-white text-3xl tracking-tight">Analyses de <span className="text-[var(--accent-tan)]">Performance</span></h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div
+                    className="p-8 rounded-[32px] border border-white/5 backdrop-blur-md"
+                    style={{ background: 'var(--bg-glass-gradient)' }}
+                  >
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--accent-tan)] mb-6">Répartition par Priorité</h3>
+                    <div className="space-y-4">
+                      {['high', 'medium', 'low'].map(p => {
+                        const count = tasks.filter(t => t.priority === p).length;
+                        const percent = tasks.length > 0 ? (count / tasks.length) * 100 : 0;
+                        return (
+                          <div key={p} className="space-y-2">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span className="capitalize text-white">{p === 'high' ? 'Haute' : p === 'medium' ? 'Moyenne' : 'Basse'}</span>
+                              <span className="text-[var(--accent-tan)]">{count} tâches ({Math.round(percent)}%)</span>
+                            </div>
+                            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-1000 ${p === 'high' ? 'bg-rose-500' : p === 'medium' ? 'bg-[var(--accent-tan)]' : 'bg-emerald-500'}`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div
+                    className="p-8 rounded-[32px] border border-white/5 backdrop-blur-md flex flex-col items-center justify-center text-center"
+                    style={{ background: 'var(--bg-glass-gradient)' }}
+                  >
+                    <div className="relative w-40 h-40 flex items-center justify-center">
+                      <svg className="w-full h-full -rotate-90">
+                        <circle cx="80" cy="80" r="74" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/5" />
+                        <circle cx="80" cy="80" r="74" stroke="currentColor" strokeWidth="10" fill="transparent"
+                          strokeDasharray={464.7}
+                          strokeDashoffset={464.7 - (464.7 * efficiency) / 100}
+                          strokeLinecap="round"
+                          className="text-[var(--accent-cyan)] transition-all duration-1000 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+                        />
+                      </svg>
+                      <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-4xl font-black text-white">{efficiency}%</span>
+                      </div>
+                    </div>
+                    <p className="mt-6 text-sm font-bold text-[var(--accent-tan)] uppercase tracking-[0.2em]">Efficacité Globale</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* NOTES */}
+          <div className={activeTab === 'notes' ? "block" : "hidden"}>
+            {visitedViews.has('notes') && (
+              <div className="space-y-6 relative z-10 pb-20">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-white tracking-tight">Points <span className="text-[var(--accent-tan)]">Importants</span></h2>
+                  <div className="flex items-center gap-2 text-xs font-bold text-white/30 uppercase tracking-widest">
+                    <Sparkles size={14} className="text-[var(--accent-cyan)]" />
+                    <span>Capturé par l'IA</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {notes.length > 0 ? notes.map((note, i) => (
+                    <motion.div
+                      key={note.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="p-6 rounded-[28px] border border-white/5 transition-all hover:border-white/10 group backdrop-blur-3xl relative overflow-hidden"
+                      style={{ background: 'var(--bg-glass-gradient)' }}
+                    >
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/[0.03] to-transparent rounded-bl-full pointer-events-none" />
+                      <div className="flex items-start justify-between mb-4 relative z-10">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center border border-white/5",
+                          note.is_important ? "bg-[var(--accent-tan)]/10 text-[var(--accent-tan)]" : "bg-white/5 text-white/30"
+                        )}>
+                          {note.is_important ? <Sparkles size={18} /> : <Clock size={18} />}
+                        </div>
+                        <span className="text-[9px] uppercase font-black tracking-widest text-white/20">
+                          {format(new Date(note.created_at), "d MMM", { locale: fr })}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold mb-2 text-white group-hover:text-[var(--accent-tan)] transition-colors">{note.title || "Insight"}</h3>
+                      <p className="text-sm text-[var(--text-secondary)] leading-relaxed italic line-clamp-4">"{note.content}"</p>
+                    </motion.div>
+                  )) : (
+                    <div
+                      className="col-span-full py-32 text-center rounded-[32px] border border-dashed border-white/5 backdrop-blur-sm"
+                      style={{ background: 'var(--bg-glass-gradient)' }}
+                    >
+                      <Sparkles size={48} className="text-white/5 mx-auto mb-6" />
+                      <p className="text-[var(--text-secondary)] text-sm font-medium">Discutez avec l'assistant pour capturer vos pensées.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* DEFAULT / PLACEHOLDER */}
+          <div className={['home', 'dashboard', 'calendar', 'chat', 'teams', 'notifications', 'stats', 'notes'].includes(activeTab) ? "hidden" : "block"}>
+            <div className="flex flex-col items-center justify-center py-20 bg-[var(--bg-card)]/30 rounded-[var(--radius-xl)] border border-dashed border-[var(--border-subtle)]">
+              <Cpu size={48} className="text-[var(--accent-cyan)] opacity-20 mb-4" />
+              <h3 className="text-xl font-medium text-white/40">Section "{activeTab}"</h3>
+              <p className="text-sm text-white/20 mt-2">Cette fonctionnalité est en cours de développement.</p>
+            </div>
+          </div>
         </main>
 
       </div>
