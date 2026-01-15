@@ -154,10 +154,24 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
             };
 
             rec.onend = () => {
+                // Do NOT auto-submit here blindly.
+                // Just update status if we are not processing yet.
                 if (statusRef.current === "listening") {
+                    // Check if we have a result that needs sending
                     const finalMsg = currentFullTranscriptRef.current.trim();
-                    if (finalMsg) processMessage(finalMsg);
-                    else setStatus("idle");
+                    if (finalMsg) {
+                        // We have a message, but maybe the user just paused?
+                        // If we are here, it means the recognition engine stopped itself.
+                        // We should probably restart it unless silence timeout killed it.
+                        // But if silence timeout killed it, stopListeningAndSend() would have been called.
+                        // If we are here, it might be a network glitch or max duration.
+                        // Let's restart listening to keep the session alive until silence kills it.
+                        console.log("Rec ended but validation logic is elsewhere. Restarting rec...");
+                        try { rec.start(); } catch (e) { }
+                    } else {
+                        // No input, truly idle execution or noise
+                        // setStatus("idle"); 
+                    }
                 }
             };
 
@@ -172,16 +186,20 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
 
     const stopListeningAndSend = () => {
         if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+
+        // Critical: Capture the text BEFORE stopping recognition, as refs might get cleared or events fire out of order
+        const textToSend = currentFullTranscriptRef.current.trim() || textInput.trim();
+
         if (recognitionRef.current) {
-            recognitionRef.current.onend = null;
+            recognitionRef.current.onend = null; // Prevent onend form triggering restart
             try { recognitionRef.current.stop(); } catch (e) { }
             recognitionRef.current = null;
         }
 
-        const text = currentFullTranscriptRef.current.trim() || textInput.trim();
-        if (text) {
-            processMessage(text);
+        if (textToSend) {
+            processMessage(textToSend);
         } else {
+            console.log("No text to send, going idle.");
             setStatus("idle");
         }
     };
