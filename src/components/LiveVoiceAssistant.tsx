@@ -21,72 +21,37 @@ declare global {
 }
 
 export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoiceAssistantProps) {
-    // Mode is now effectively always "Text" with Voice augmentation on Mobile
-    // But we keep "voice" state for desktop visualizer behavior if needed.
-    // For mobile fix: We default to a "Hybrid" view.
-
     const [status, setStatus] = useState<"idle" | "listening" | "processing" | "speaking" | "error">("idle");
     const [transcript, setTranscript] = useState("");
     const [textInput, setTextInput] = useState("");
     const [volume, setVolume] = useState(0);
     const [isMobile, setIsMobile] = useState(false);
-    const [showMobileInit, setShowMobileInit] = useState(true);
     const [errorMessage, setErrorMessage] = useState("");
 
     const recognitionRef = useRef<any>(null);
-    const lastTranscriptRef = useRef<string>("");
-    const currentFullTranscriptRef = useRef<string>(""); // New Ref to track live state
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const animationFrameRef = useRef<number | null>(null);
+    const currentFullTranscriptRef = useRef<string>("");
     const statusRef = useRef(status);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const micStreamRef = useRef<MediaStream | null>(null);
 
     useEffect(() => { statusRef.current = status; }, [status]);
+    useEffect(() => { setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)); }, []);
 
-    useEffect(() => {
-        setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-    }, []);
-
-    const handleCompleteTermination = useCallback(() => {
-        if (recognitionRef.current) {
-            recognitionRef.current.onend = null;
-            try { recognitionRef.current.abort(); } catch (e) { }
-        }
-        recognitionRef.current = null;
-        window.speechSynthesis.cancel();
-    }, []);
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => handleCompleteTermination();
-    }, [handleCompleteTermination]);
-
-    const speak = (text: string) => {
-        if (!text) return;
-        const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
-        if (!cleanText) return;
-
-        console.log("[VoiceAssistant] Speaking:", cleanText);
-        window.speechSynthesis.cancel();
-
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = "fr-FR";
-        utterance.rate = 1.1;
-
-        utterance.onstart = () => setStatus("speaking");
-        utterance.onend = () => setStatus("idle");
-        utterance.onerror = (e) => {
-            console.error("TTS Error", e);
-            setStatus("idle");
-        };
-
-        window.speechSynthesis.speak(utterance);
+    const stopSpeaking = () => {
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        setStatus("idle");
     };
 
     const processMessage = async (text: string) => {
         if (statusRef.current === "processing") return;
+
+        // Stop current recognition turn to avoid picking up the AI voice
+        if (recognitionRef.current) {
+            recognitionRef.current.onend = null;
+            try { recognitionRef.current.stop(); } catch (e) { }
+            recognitionRef.current = null;
+        }
+
         setStatus("processing");
         setErrorMessage("");
 
@@ -98,21 +63,15 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
                 credentials: 'include'
             });
 
-            if (res.status === 401) {
-                window.location.href = "/auth";
-                throw new Error("Session expirée.");
-            }
-
+            if (res.status === 401) { window.location.href = "/auth"; return; }
             if (!res.ok) throw new Error("Erreur serveur");
 
             const data = await res.json();
-
             if (data.actions && data.actions.length > 0) onTaskCreated?.();
+
             speak(data.message);
 
-            // Clear inputs
             setTranscript("");
-            lastTranscriptRef.current = "";
             currentFullTranscriptRef.current = "";
             setTextInput("");
 
@@ -124,94 +83,89 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
         }
     };
 
-    const stopSpeaking = () => {
-        if (window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel();
-        }
-        setStatus("idle");
+    const speak = (text: string) => {
+        if (!text) return;
+        const cleanText = text.replace(/```json[\s\S]*?```/g, '').replace(/[*#]/g, '').trim();
+        if (!cleanText) return;
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = "fr-FR";
+        utterance.rate = 1.1;
+
+        utterance.onstart = () => setStatus("speaking");
+        utterance.onend = () => {
+            setStatus("idle");
+            // Auto-listen after AI finishes - hands-free mode
+            if (statusRef.current === "idle" || statusRef.current === "speaking") {
+                startListening();
+            }
+        };
+        utterance.onerror = () => setStatus("idle");
+
+        window.speechSynthesis.speak(utterance);
     };
 
     const startListening = async () => {
+        if (statusRef.current === "listening" || statusRef.current === "processing") return;
+
         try {
-            // Only reset if starting fresh, but keep current text for UI
             setTranscript("");
             currentFullTranscriptRef.current = "";
-
             setStatus("listening");
             setErrorMessage("");
 
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
                 setErrorMessage("Non supporté");
                 setStatus("idle");
                 return;
             }
 
-            const recognition = new SpeechRecognition();
-            recognition.lang = "fr-FR";
+            const rec = new SpeechRec();
+            rec.lang = "fr-FR";
+            rec.continuous = true;
+            rec.interimResults = true;
 
-            // Standard non-continuous mode is much more stable on mobile
-            // and naturally stops when the user finishes their sentence.
-            recognition.continuous = false;
-            recognition.interimResults = true;
-
-            recognition.onresult = (event: any) => {
-                // Reset silence timer on every new result
+            rec.onresult = (event: any) => {
                 if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
 
-                let final = "";
-                let interim = "";
-
-                for (let i = 0; i < event.results.length; ++i) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        final += transcript;
-                    } else {
-                        interim += transcript;
-                    }
+                let fullText = "";
+                for (let i = 0; i < event.results.length; i++) {
+                    fullText += event.results[i][0].transcript;
                 }
 
-                const result = (final || interim).trim();
+                const result = fullText.trim();
                 if (result) {
                     setTranscript(result);
                     setTextInput(result);
                     currentFullTranscriptRef.current = result;
 
-                    // Auto-reply after 8 seconds of silence (provides more "breathing room")
+                    // Auto-submit after 8s of silence (Conversation Breathing Room)
                     silenceTimeoutRef.current = setTimeout(() => {
-                        console.log("[VoiceAssistant] Silence detected, auto-sending...");
                         stopListeningAndSend();
                     }, 8000);
                 }
             };
 
-            recognition.onerror = (event: any) => {
-                if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-                console.error("Rec Error", event.error);
-                if (event.error !== 'no-speech') {
-                    setErrorMessage(event.error === 'not-allowed' ? "Micro bloqué" : "Erreur Micro");
-                }
-                setStatus("idle");
+            rec.onerror = (e: any) => {
+                if (e.error === 'not-allowed') setErrorMessage("Micro bloqué");
+                if (e.error !== 'no-speech') console.error("Rec Error", e.error);
             };
 
-            recognition.onend = () => {
-                if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
-                // AUTO-SUBMIT: If we have text and the session ended naturally (silence)
+            rec.onend = () => {
                 if (statusRef.current === "listening") {
                     const finalMsg = currentFullTranscriptRef.current.trim();
-                    if (finalMsg) {
-                        processMessage(finalMsg);
-                    } else {
-                        setStatus("idle");
-                    }
+                    if (finalMsg) processMessage(finalMsg);
+                    else setStatus("idle");
                 }
             };
 
-            recognition.start();
-            recognitionRef.current = recognition;
+            rec.start();
+            recognitionRef.current = rec;
 
         } catch (err) {
-            setErrorMessage("Erreur Micro");
+            console.error(err);
             setStatus("idle");
         }
     };
@@ -219,23 +173,80 @@ export default function LiveVoiceAssistant({ onTaskCreated, onClose }: LiveVoice
     const stopListeningAndSend = () => {
         if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
         if (recognitionRef.current) {
-            // Calling stop() will trigger onend, which handles the submission
-            recognitionRef.current.stop();
+            recognitionRef.current.onend = null;
+            try { recognitionRef.current.stop(); } catch (e) { }
             recognitionRef.current = null;
+        }
+
+        const text = currentFullTranscriptRef.current.trim() || textInput.trim();
+        if (text) {
+            processMessage(text);
         } else {
-            const text = textInput.trim() || transcript.trim();
-            if (text) processMessage(text);
+            setStatus("idle");
         }
     };
 
-    // Desktop Visualizer Logic (Only run if !isMobile)
+    // Auto-Barge-In and Volume Visualization
     useEffect(() => {
-        if (isMobile) return;
-    }, [isMobile]);
+        let animationId: number;
+        let bargeInDebounce = 0;
 
-    // keeping sync with status
-    useEffect(() => {
-        statusRef.current = status;
+        const monitorStream = async () => {
+            if (status === 'speaking' || status === 'listening') {
+                try {
+                    // Try to reuse the existing stream or get a new one with high sensitivity
+                    const stream = micStreamRef.current || await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        }
+                    });
+                    micStreamRef.current = stream;
+
+                    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                    const ctx = new AudioCtx();
+                    const source = ctx.createMediaStreamSource(stream);
+                    const ana = ctx.createAnalyser();
+                    ana.fftSize = 512;
+                    source.connect(ana);
+                    const data = new Uint8Array(ana.frequencyBinCount);
+
+                    const check = () => {
+                        if (statusRef.current !== 'speaking' && statusRef.current !== 'listening') {
+                            ctx.close();
+                            return;
+                        }
+                        ana.getByteFrequencyData(data);
+                        let sum = 0;
+                        for (let i = 0; i < data.length; i++) sum += data[i];
+                        const vol = sum / data.length / 255;
+                        setVolume(vol);
+
+                        // If user interjects during AI speech - Highly sensitive detection
+                        if (statusRef.current === 'speaking' && vol > 0.15) { // Lowered threshold for better sensitivity
+                            bargeInDebounce++;
+                            if (bargeInDebounce > 5) { // Faster response (~100ms)
+                                console.log("[VoiceAssistant] Barge-In detected!");
+                                stopSpeaking();
+                                startListening();
+                                ctx.close();
+                                return;
+                            }
+                        } else {
+                            bargeInDebounce = Math.max(0, bargeInDebounce - 1); // Gradual cooldown
+                        }
+                        animationId = requestAnimationFrame(check);
+                    };
+                    check();
+                } catch (e) {
+                    console.error("VAD Error", e);
+                }
+            }
+        };
+
+        monitorStream();
+        return () => { if (animationId) cancelAnimationFrame(animationId); };
     }, [status]);
 
     return (
